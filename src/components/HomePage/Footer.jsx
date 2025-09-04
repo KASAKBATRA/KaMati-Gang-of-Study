@@ -90,7 +90,8 @@ export default function Footer() {
                 Akshat Pal
               </span>
             </div>
-            <div>Tech Stack: React, Node.js, Firebase</div>
+            <div>Tech Stack: React, Node.js</div>
+            <div>Collab: https://www.linkedin.com/in/akshatpal2007/ </div>
             <div>© 2025 KaMaTi Gang</div>
           </div>
         </div>

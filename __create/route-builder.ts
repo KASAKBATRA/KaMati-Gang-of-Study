@@ -5,6 +5,23 @@ import { Hono } from 'hono';
 import type { Handler } from 'hono/types';
 import updatedFetch from '../src/__create/fetch';
 
+// Type augmentation for ImportMeta to include 'env'
+interface ImportMetaEnv {
+  DEV?: boolean;
+  [key: string]: any;
+}
+
+// Augment the global ImportMeta interface so TypeScript recognizes 'env'
+declare global {
+  interface ImportMeta {
+    env: ImportMetaEnv;
+    hot?: {
+      accept: (callback: (newSelf: any) => void) => void;
+    };
+    glob?: (pattern: string, options?: { eager?: boolean }) => Record<string, unknown>;
+  }
+}
+
 const API_BASENAME = '/api';
 const api = new Hono();
 
@@ -132,13 +149,18 @@ async function registerRoutes() {
 }
 
 // Initial route registration
-await registerRoutes();
+function registerRoutesAsync() {
+  return registerRoutes();
+}
+registerRoutesAsync();
 
 // Hot reload routes in development
 if (import.meta.env.DEV) {
-  import.meta.glob('../src/app/api/**/route.js', {
-    eager: true,
-  });
+  if (typeof import.meta.glob === 'function') {
+    import.meta.glob('../src/app/api/**/route.js', {
+      eager: true,
+    });
+  }
   if (import.meta.hot) {
     import.meta.hot.accept((newSelf) => {
       registerRoutes().catch((err) => {

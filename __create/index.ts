@@ -227,6 +227,7 @@ app.all('/integrations/:path{.+}', async (c, next) => {
   });
 });
 
+
 app.use('/api/auth/*', async (c, next) => {
   if (isAuthAction(c.req.path)) {
     return authHandler()(c, next);
@@ -235,7 +236,12 @@ app.use('/api/auth/*', async (c, next) => {
 });
 app.route(API_BASENAME, api);
 
-export default await createHonoServer({
-  app,
-  defaultLogger: false,
-});
+async function getServer() {
+  return await createHonoServer({
+    app,
+    defaultLogger: false,
+  });
+}
+
+const serverPromise = getServer();
+export default serverPromise;
