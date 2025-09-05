@@ -3,8 +3,9 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "react-router dev",
-		"typecheck": "react-router typegen && tsc --noEmit"
+		"dev": "react-router-dev dev",
+		"typecheck": "react-router-dev typegen && tsc --noEmit",
+		"build": "vite build"
 	},
 	"dependencies": {
 		"@auth/core": "^0.37.2",
