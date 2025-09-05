@@ -5,7 +5,8 @@
 	"scripts": {
 		"dev": "react-router-dev dev",
 		"typecheck": "react-router-dev typegen && tsc --noEmit",
-		"build": "vite build"
+		"build": "vite build",
+		"postbuild": "node copy-api.cjs"
 	},
 	"dependencies": {
 		"@auth/core": "^0.37.2",
