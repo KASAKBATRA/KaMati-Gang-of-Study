@@ -12,7 +12,7 @@ import { Textarea } from './components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
-import { Home, BookOpen, Users, Mail, MessageCircle, Star, Eye, Info, Phone, Sun, Moon, Search, Trash2, Reply, Send } from 'lucide-react';
+import { Home, BookOpen, Users, Mail, MessageCircle, Star, Eye, Info, Phone, Sun, Moon, Search, Trash2, Reply, Send, Handshake } from 'lucide-react';
 import notesData from './notes/notesData';
 // Semester to subjects mapping
 const semesterSubjects = {
@@ -103,7 +103,7 @@ const KaMaTi = () => {
       uploaded_at: '2024-12-01'
     },
     {
-      id: '2', 
+      id: '2',
       title: 'FODS Assignment Solutions',
       semester: '3',
       subject: 'Data Science',
@@ -113,7 +113,7 @@ const KaMaTi = () => {
     },
     {
       id: '3',
-      title: 'Machine Learning Basics', 
+      title: 'Machine Learning Basics',
       semester: '3',
       subject: 'Data Science',
       size: '3.2 MB',
@@ -123,7 +123,7 @@ const KaMaTi = () => {
     {
       id: '4',
       title: 'Python Programming Guide',
-      semester: '3', 
+      semester: '3',
       subject: 'Computer Science',
       size: '2.5 MB',
       file_url: '#',
@@ -133,7 +133,7 @@ const KaMaTi = () => {
       id: '5',
       title: 'Database Management System',
       semester: '4',
-      subject: 'Computer Science', 
+      subject: 'Computer Science',
       size: '4.1 MB',
       file_url: '#',
       uploaded_at: '2024-11-15'
@@ -143,7 +143,7 @@ const KaMaTi = () => {
       title: 'Web Development Fundamentals',
       semester: '4',
       subject: 'Computer Science',
-      size: '3.8 MB', 
+      size: '3.8 MB',
       file_url: '#',
       uploaded_at: '2024-11-10'
     }
@@ -190,7 +190,7 @@ const KaMaTi = () => {
 
   const createDiscussion = async () => {
     if (!newDiscussion.title.trim() || !newDiscussion.content.trim()) return;
-    
+
     try {
       await axios.post(`${API}/discussions`, newDiscussion);
       setNewDiscussion({ title: '', content: '' });
@@ -202,7 +202,7 @@ const KaMaTi = () => {
 
   const createReply = async (discussionId) => {
     if (!newReply.trim()) return;
-    
+
     try {
       await axios.post(`${API}/discussions/${discussionId}/replies`, {
         content: newReply,
@@ -255,15 +255,15 @@ const KaMaTi = () => {
       {/* Top Header with Logo and Theme Toggle */}
       <div className="top-header">
         <div className="logo-header">
-          <img 
-            src="https://customer-assets.emergentagent.com/job_kamati-hub/artifacts/h1njd072_KaMaTi%20Gang%20of%20Study%20%282%29.png" 
-            alt="KaMaTi Gang" 
+          <img
+            src="https://customer-assets.emergentagent.com/job_kamati-hub/artifacts/h1njd072_KaMaTi%20Gang%20of%20Study%20%282%29.png"
+            alt="KaMaTi Gang"
             className="header-logo"
           />
           <span className="header-logo-text">KaMaTi Gang</span>
         </div>
-        <Button 
-          onClick={toggleTheme} 
+        <Button
+          onClick={toggleTheme}
           className="theme-toggle"
           size="sm"
         >
@@ -275,10 +275,10 @@ const KaMaTi = () => {
       <div className="fixed-sidebar">
         <div className="nav-items">
           <NavigationItem icon={Home} label="Home" section="home" />
-          <NavigationItem 
-            icon={BookOpen} 
-            label="Notes" 
-            section="notes" 
+          <NavigationItem
+            icon={BookOpen}
+            label="Notes"
+            section="notes"
             onClick={() => setShowNotesModal(true)}
           />
           <NavigationItem icon={Users} label="Community" section="community" />
@@ -298,19 +298,26 @@ const KaMaTi = () => {
                 <h1 className="hero-title">Welcome to KaMaTi Gang</h1>
                 <p className="hero-subtitle">IPU Notes Hub • Simplified Resources • Vibrant Community</p>
                 <div className="hero-buttons">
-                  <Button 
+                  <Button
                     className="cta-button primary"
                     onClick={() => setShowNotesModal(true)}
                   >
                     <BookOpen size={20} />
                     Explore Notes
                   </Button>
-                  <Button 
-                    className="cta-button secondary"
+                  <Button
+                    className="cta-button primary"
                     onClick={() => setActiveSection('community')}
                   >
                     <Users size={20} />
                     Join Community
+                  </Button>
+                  <Button
+                    className="cta-button primary"
+                    onClick={() => setActiveSection('team')}
+                  >
+                    <Handshake size={20} />
+                    Meet Our Team
                   </Button>
                 </div>
               </div>
@@ -320,19 +327,15 @@ const KaMaTi = () => {
         {/* Glassmorphism Footer - Always at Bottom */}
         <footer className="glass-footer">
           <div className="footer-content">
-            <div className="footer-section">
-              <h4>Developer Info</h4>
-              <p>Akshat Pal</p>
-              <p>React • Node.js • MongoDB</p>
-              <p><a href="https://www.linkedin.com/in/akshatpal2007/" target="_blank" rel="noopener noreferrer">LinkedIn</a></p>
-            </div>
-            <div className="footer-section">
-              <h4>Contact</h4>
+            <div className="footer-section mt-5">
+              <h4><Mail size={18} style={{ marginRight: '8px' }} />Contact</h4>
               <p>kamatigangofstudy@gmail.com</p>
-              <p><a href="https://whatsapp.com/channel/0029Vb6RPBA1NCrTsBR2FD1U" target="_blank" rel="noopener noreferrer">WhatsApp Channel</a></p>
             </div>
-            <div className="footer-section">
-			  <p>© 2025 KaMaTi Gang</p>
+            <div className="footer-section mt-5">
+              <h4><a href="https://whatsapp.com/channel/0029Vb6RPBA1NCrTsBR2FD1U" target="_blank" rel="noopener noreferrer"><MessageCircle size={18} style={{ marginRight: '8px' }} />WhatsApp Channel</a></h4>
+            </div>
+            <div className="footer-section mt-5">
+              <p>© 2025 KaMaTi Gang</p>
             </div>
           </div>
         </footer>
@@ -394,16 +397,16 @@ const KaMaTi = () => {
                                 rows={3}
                               />
                               <div className="reply-actions">
-                                <Button 
-                                  size="sm" 
+                                <Button
+                                  size="sm"
                                   onClick={() => createReply(discussion.id)}
                                   className="send-reply-btn"
                                 >
                                   <Send size={14} />
                                   Send Reply
                                 </Button>
-                                <Button 
-                                  size="sm" 
+                                <Button
+                                  size="sm"
                                   variant="outline"
                                   onClick={() => {
                                     setReplyingTo(null);
@@ -430,13 +433,13 @@ const KaMaTi = () => {
                       <Input
                         placeholder="Question title..."
                         value={newDiscussion.title}
-                        onChange={(e) => setNewDiscussion({...newDiscussion, title: e.target.value})}
+                        onChange={(e) => setNewDiscussion({ ...newDiscussion, title: e.target.value })}
                         className="question-input"
                       />
                       <Textarea
                         placeholder="Describe your question in detail..."
                         value={newDiscussion.content}
-                        onChange={(e) => setNewDiscussion({...newDiscussion, content: e.target.value})}
+                        onChange={(e) => setNewDiscussion({ ...newDiscussion, content: e.target.value })}
                         className="question-textarea"
                         rows={6}
                       />
@@ -452,6 +455,70 @@ const KaMaTi = () => {
           </div>
         )}
 
+        {activeSection === 'team' && (
+          <div className="team-section mb-32 ">
+
+            <div className="section-header">
+              <h2>Meet the KaMaTi Team</h2>
+              <p>The dedicated developers and contributors behind this hub.</p>
+            </div>
+
+            <div className="flex flex-col gap-6 w-full">
+              <Card className="!flex !flex-col !items-start team-member-card">
+                <CardHeader
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                    gap: "16px",
+                  }}>
+                  <CardTitle className="text-xl font-bold border-b pb-1">Akshat Pal (Developer)</CardTitle>
+                  <img
+                    src="/images/akshat.jpg"
+                    alt="Akshat Pal Profile"
+                    className="w-28 h-28 rounded-full object-cover"
+                  />
+                </CardHeader>
+                <CardContent>
+                  <p>Building the front-end interface and managing the backend services.</p>
+                  <p>Connect: <a href="https://www.linkedin.com/in/akshatpal2007/" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700 underline">LinkedIn</a></p>
+                </CardContent>
+              </Card>
+              <Card className="!flex !flex-col !items-start team-member-card">
+                <CardHeader 
+                style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                    gap: "16px",
+                  }}>
+                  <CardTitle className="text-xl font-bold border-b pb-1">Himanshi Sharma (Developer)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p>Maintaining code quality and fixing critical bugs.</p>
+                  <p>Connect: <a href="https://www.linkedin.com/in/himanshi-sharma-908341255/" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700 underline">LinkedIn</a></p>
+                </CardContent>
+              </Card>
+              <Card className="!flex !flex-col !items-start team-member-card">
+                <CardHeader 
+                style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                    gap: "16px",
+                  }}>
+                  <CardTitle className="text-xl font-bold border-b pb-1">Reachal Jain (Social Media Manager)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p>Handling Social Media Accounts .</p>
+                  <p>Connect: <a href="https://www.linkedin.com/in/reachal-jain-0946a536b/" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700 underline">LinkedIn</a></p>
+                </CardContent>
+              </Card>
+
+            </div>
+          </div>
+        )}
+
         {activeSection === 'about' && (
           <div className="about-section">
             <div className="section-header">
@@ -461,12 +528,12 @@ const KaMaTi = () => {
             <div className="about-content">
               <div className="about-description">
                 <p>
-                  KaMaTi Gang is a dedicated study hub for IPU students, providing comprehensive notes, 
-                  resources, and a vibrant community platform. We believe in making education accessible and 
+                  KaMaTi Gang is a dedicated study hub for IPU students, providing comprehensive notes,
+                  resources, and a vibrant community platform. We believe in making education accessible and
                   fostering collaborative learning among students.
                 </p>
                 <p>
-                  Join thousands of students who are already part of our community and accelerate your academic 
+                  Join thousands of students who are already part of our community and accelerate your academic
                   journey with our carefully curated resources and peer support.
                 </p>
               </div>
@@ -510,9 +577,9 @@ const KaMaTi = () => {
                   <div className="contact-item">
                     <MessageCircle size={24} />
                     <div>
-                      <a 
-                        href="https://whatsapp.com/channel/0029Vb6RPBA1NCrTsBR2FD1U" 
-                        target="_blank" 
+                      <a
+                        href="https://whatsapp.com/channel/0029Vb6RPBA1NCrTsBR2FD1U"
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="whatsapp-link"
                       >
@@ -526,44 +593,44 @@ const KaMaTi = () => {
           </div>
         )}
       </div>
-      
 
-    {/* Notes Modal - move above footer */}
-    <Dialog open={showNotesModal} onOpenChange={setShowNotesModal}>
-      <DialogContent className="notes-modal">
-        <DialogHeader>
-          <DialogTitle>Study Materials</DialogTitle>
-        </DialogHeader>
-        {/* Search and Filters */}
-        <div className="notes-controls">
-          <div className="search-container">
-            <Search size={18} />
-            <Input
-              placeholder="Search notes..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-input"
-            />
-          </div>
-          <div className="notes-filters">
-            <Select value={filters.semester} onValueChange={(value) => setFilters({...filters, semester: value})}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Semesters" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Semesters</SelectItem>
-                <SelectItem value="1">Semester 1</SelectItem>
-                <SelectItem value="2">Semester 2</SelectItem>
-                <SelectItem value="3">Semester 3</SelectItem>
-                <SelectItem value="4">Semester 4</SelectItem>
-                <SelectItem value="5">Semester 5</SelectItem>
-                <SelectItem value="6">Semester 6</SelectItem>
-                <SelectItem value="7">Semester 7</SelectItem>
-                <SelectItem value="8">Semester 8</SelectItem>
-              </SelectContent>
-            </Select>
-              <Select value={filters.subject} onValueChange={(value) => setFilters({...filters, subject: value})}>
-              
+
+      {/* Notes Modal - move above footer */}
+      <Dialog open={showNotesModal} onOpenChange={setShowNotesModal}>
+        <DialogContent className="notes-modal">
+          <DialogHeader>
+            <DialogTitle>Study Materials</DialogTitle>
+          </DialogHeader>
+          {/* Search and Filters */}
+          <div className="notes-controls">
+            <div className="search-container">
+              <Search size={18} />
+              <Input
+                placeholder="Search notes..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="search-input"
+              />
+            </div>
+            <div className="notes-filters">
+              <Select value={filters.semester} onValueChange={(value) => setFilters({ ...filters, semester: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Semesters" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Semesters</SelectItem>
+                  <SelectItem value="1">Semester 1</SelectItem>
+                  <SelectItem value="2">Semester 2</SelectItem>
+                  <SelectItem value="3">Semester 3</SelectItem>
+                  <SelectItem value="4">Semester 4</SelectItem>
+                  <SelectItem value="5">Semester 5</SelectItem>
+                  <SelectItem value="6">Semester 6</SelectItem>
+                  <SelectItem value="7">Semester 7</SelectItem>
+                  <SelectItem value="8">Semester 8</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filters.subject} onValueChange={(value) => setFilters({ ...filters, subject: value })}>
+
                 <SelectTrigger>
                   <SelectValue placeholder="All Subjects" />
                 </SelectTrigger>
@@ -574,33 +641,33 @@ const KaMaTi = () => {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
           </div>
-        </div>
-        <div className="notes-grid">
-          {filteredNotes.map((note) => (
-            <Card key={note.id} className="note-card">
-              <CardContent>
-                <h4>{note.title}</h4>
-                <div className="note-details">
-                  <p><strong>Subject:</strong> {note.subject}</p>
-                  <p><strong>Semester:</strong> {note.semester}</p>
-                  <p><strong>Size:</strong> {note.size}</p>
-                  <p><strong>Uploaded:</strong> {note.uploaded_at}</p>
-                </div>
-                <div className="note-actions">
-                  <Button size="sm" className="view-button" asChild>
-                    <a href={note.file_url} target="_blank" rel="noopener noreferrer">
-                      <Eye size={16} />
-                      View Note
-                    </a>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </DialogContent>
-    </Dialog>
+          <div className="notes-grid">
+            {filteredNotes.map((note) => (
+              <Card key={note.id} className="note-card">
+                <CardContent>
+                  <h4>{note.title}</h4>
+                  <div className="note-details">
+                    <p><strong>Subject:</strong> {note.subject}</p>
+                    <p><strong>Semester:</strong> {note.semester}</p>
+                    <p><strong>Size:</strong> {note.size}</p>
+                    <p><strong>Uploaded:</strong> {note.uploaded_at}</p>
+                  </div>
+                  <div className="note-actions">
+                    <Button size="sm" className="view-button" asChild>
+                      <a href={note.file_url} target="_blank" rel="noopener noreferrer">
+                        <Eye size={16} />
+                        View Note
+                      </a>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteConfirm !== null} onOpenChange={() => setShowDeleteConfirm(null)}>
@@ -610,14 +677,14 @@ const KaMaTi = () => {
           </DialogHeader>
           <p>Are you sure you want to delete this discussion? This action cannot be undone.</p>
           <div className="delete-actions">
-            <Button 
-              onClick={() => deleteDiscussion(showDeleteConfirm)} 
+            <Button
+              onClick={() => deleteDiscussion(showDeleteConfirm)}
               className="delete-confirm-btn"
             >
               Delete
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setShowDeleteConfirm(null)}
             >
               Cancel
@@ -632,7 +699,7 @@ const KaMaTi = () => {
           <DialogHeader>
             <DialogTitle>How much do you like our service?</DialogTitle>
           </DialogHeader>
-          
+
           <div className="feedback-content">
             <div className="rating-section">
               {[1, 2, 3, 4, 5].map((star) => (
@@ -640,25 +707,25 @@ const KaMaTi = () => {
                   key={star}
                   size={32}
                   className={`star ${feedback.rating >= star ? 'filled' : ''}`}
-                  onClick={() => setFeedback({...feedback, rating: star})}
+                  onClick={() => setFeedback({ ...feedback, rating: star })}
                 />
               ))}
             </div>
-            
+
             <Input
               placeholder="Your name (optional)"
               value={feedback.name}
-              onChange={(e) => setFeedback({...feedback, name: e.target.value})}
+              onChange={(e) => setFeedback({ ...feedback, name: e.target.value })}
               className="feedback-name"
             />
-            
+
             <Textarea
               placeholder="Any additional comments? (optional)"
               value={feedback.comment}
-              onChange={(e) => setFeedback({...feedback, comment: e.target.value})}
+              onChange={(e) => setFeedback({ ...feedback, comment: e.target.value })}
               className="feedback-textarea"
             />
-            
+
             <div className="feedback-actions">
               <Button onClick={submitFeedback} className="submit-feedback-button">
                 Submit & Join WhatsApp

@@ -129,6 +129,13 @@ body {
   color: var(--light-text);
 }
 
+.team-members-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1.5rem !important; 
+    width: 100%;
+}
+
 .kamati-container {
   min-height: 100vh;
   position: relative;
@@ -1364,4 +1371,12 @@ body {
   .features-grid {
     grid-template-columns: 1fr;
   }
+}
+.team-member-card .card-header,
+.team-member-card .CardHeader,
+.team-member-card header {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1rem !important;
 }
