@@ -335,7 +335,7 @@ const KaMaTi = () => {
 			  <p>© 2025 KaMaTi Gang</p>
             </div>
           </div>
-    </footer>
+        </footer>
 
         {activeSection === 'community' && (
           <div className="community-section">
@@ -526,6 +526,7 @@ const KaMaTi = () => {
           </div>
         )}
       </div>
+      
 
     {/* Notes Modal - move above footer */}
     <Dialog open={showNotesModal} onOpenChange={setShowNotesModal}>
@@ -562,6 +563,7 @@ const KaMaTi = () => {
               </SelectContent>
             </Select>
               <Select value={filters.subject} onValueChange={(value) => setFilters({...filters, subject: value})}>
+              
                 <SelectTrigger>
                   <SelectValue placeholder="All Subjects" />
                 </SelectTrigger>
