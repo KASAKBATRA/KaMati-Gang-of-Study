@@ -12,7 +12,7 @@ import { Textarea } from './components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
-import { Home, BookOpen, Users, Mail, MessageCircle, Star, Eye, Info, Phone, Sun, Moon, Search, Trash2, Reply, Send, Handshake } from 'lucide-react';
+import { Home, BookOpen, Mail, MessageCircle, Star, Eye, Info, Phone, Sun, Moon, Search, Trash2, Reply, Send, Handshake, ChevronDown } from 'lucide-react';
 import notesData from './notes/notesData';
 // Semester to subjects mapping
 const semesterSubjects = {
@@ -53,8 +53,227 @@ const semesterSubjects = {
   ]
 };
 
+// Exam datesheet (semester mapped)
+const examDates = {
+  3: [
+    { name: 'UHV', date: '15-12-25' },
+    { name: 'DS', date: '17-12-25' },
+    { name: 'FODS', date: '19-12-25' },
+    { name: 'DLD', date: '22-12-25' },
+    { name: 'PAI', date: '24-12-25' },
+    { name: 'PSLA', date: '27-12-25' },
+    { name: 'CRST', date: '30-12-25' }
+  ],
+  5: [
+    { name: 'PME', date: '16/12/2025' },
+    { name: 'DAA', date: '18/12/25' },
+    { name: 'FODL', date: '20/12/25' },
+    { name: 'COA', date: '23/12/25' },
+    { name: 'IOT', date: '26/12/25' },
+    { name: 'OS', date: '31/12/25' }
+  ],
+  7: [
+    { name: 'PEM', date: '15/12/25' },
+    { name: 'BIA', date: '17/12/25' },
+    { name: 'ADS', date: '19/12/25' },
+    { name: 'WI', date: '22/12/25' },
+    { name: 'CV', date: '24/12/25' },
+    { name: 'ASP', date: '02/01/26' }
+  ]
+};
+
+// Helper: parse date strings like '16/12/2025', '18/12/25', '15-12-25' etc.
+function parseExamDate(str) {
+  if (!str) return null;
+  const s = String(str).trim();
+  const sep = s.includes('/') ? '/' : s.includes('-') ? '-' : null;
+  if (!sep) return new Date(s);
+  const parts = s.split(sep).map(p => p.trim());
+  if (parts.length < 3) return new Date(s);
+  let [d, m, y] = parts;
+  if (y.length === 2) y = '20' + y;
+  // Use local time at 09:00 to avoid timezone surprises
+  return new Date(Number(y), Number(m) - 1, Number(d), 9, 0, 0);
+}
+
+// Today's rotating study targets (subject + chapter suggestions)
+const todaysTargets = [
+  'PME - Revision: Module 1',
+  'DAA - Greedy Algorithms',
+  'FODL - Design Patterns',
+  'COA - Pipelining',
+  'IOT - MQTT Basics',
+  'OS - Process Scheduling',
+  'UHV - Ethics Case Study',
+  'DS - Graph Algorithms',
+  'FODS - Database Normalization',
+  'DLD - Sequential Circuits',
+  'PAI - Search Heuristics',
+  'PSLA - Probability Problems',
+  'CRST - Critical Reasoning',
+  'BIA - Business Intelligence Overview',
+  'ADS - Advanced Data Structures',
+  'WI - Web Integration',
+  'CV - Computer Vision Pipeline',
+  'ASP - Advanced System Programming'
+];
+
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+
+// Exam countdown component
+function ExamCountdown({ semester }) {
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const exams = (examDates[Number(semester)] || []).map(e => ({
+    name: e.name,
+    date: parseExamDate(e.date)
+  }));
+
+  // find earliest upcoming exam
+  const upcoming = exams
+    .filter(e => e.date && e.date.getTime() > now.getTime())
+    .sort((a, b) => a.date - b.date);
+
+  const first = upcoming.length ? upcoming[0] : null;
+  const daysUntilFirst = first ? Math.floor((first.date - now) / (1000 * 60 * 60 * 24)) : null;
+
+  // pick today's target by rotating daily (deterministic)
+  const dayIndex = Math.floor(now.getTime() / (24 * 60 * 60 * 1000)) % todaysTargets.length;
+  const todaysTarget = todaysTargets[dayIndex];
+
+  function timeLeft(date) {
+    if (!date) return null;
+    const diff = date.getTime() - now.getTime();
+    if (diff <= 0) return null;
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    const minutes = Math.floor((diff / (1000 * 60)) % 60);
+    const seconds = Math.floor((diff / 1000) % 60);
+    return { days, hours, minutes, seconds };
+  }
+
+  return (
+    <div className="exam-side">
+      <div className="exam-header">
+        <h3>Exam Countdown (Sem {semester})</h3>
+        <p className="todays-target">Today\'s Target: {todaysTarget}</p>
+      </div>
+
+      {first && daysUntilFirst > 5 && (
+        <div className="exam-banner">Exams start in <strong>{daysUntilFirst}</strong> days for this semester</div>
+      )}
+
+      {(first && daysUntilFirst <= 5) || (!first && exams.length > 0) ? (
+        <div className="exam-cards">
+          {exams.map((e) => {
+            const tl = timeLeft(e.date);
+            return (
+              <div key={e.name} className="exam-card">
+                <div className="exam-title">{e.name}</div>
+                <div className="exam-date">{e.date ? e.date.toDateString() : 'TBA'}</div>
+                <div className={`exam-time ${!tl ? 'completed' : ''}`}>
+                  {tl ? (
+                    <>
+                      <span className="d">{tl.days}d</span>
+                      <span className="h">{String(tl.hours).padStart(2,'0')}h</span>
+                      <span className="m">{String(tl.minutes).padStart(2,'0')}m</span>
+                      <span className="s">{String(tl.seconds).padStart(2,'0')}s</span>
+                    </>
+                  ) : (
+                    <span>Exam Completed</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// Semester card that shows a summary and expands to show full datesheet timers
+function SemesterExamCard({ semester }) {
+  const [now, setNow] = useState(new Date());
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const exams = (examDates[Number(semester)] || []).map(e => ({
+    name: e.name,
+    date: parseExamDate(e.date)
+  }));
+
+  // find earliest upcoming exam
+  const upcoming = exams
+    .filter(e => e.date && e.date.getTime() > now.getTime())
+    .sort((a, b) => a.date - b.date);
+
+  const first = upcoming.length ? upcoming[0] : null;
+  const daysUntilFirst = first ? Math.floor((first.date - now) / (1000 * 60 * 60 * 24)) : null;
+
+  function timeLeftObj(date) {
+    if (!date) return null;
+    const diff = date.getTime() - now.getTime();
+    if (diff <= 0) return null;
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    const minutes = Math.floor((diff / (1000 * 60)) % 60);
+    const seconds = Math.floor((diff / 1000) % 60);
+    return { days, hours, minutes, seconds };
+  }
+
+  return (
+    <div className={`semester-card ${expanded ? 'expanded' : ''}`} onClick={() => setExpanded(!expanded)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') setExpanded(!expanded); }}>
+      <div className="semester-summary-row">
+        <div className="semester-summary-left">
+          <div className="sem-title">Semester {semester}</div>
+          <div className="sem-sub">{first ? `Next: ${first.name}` : (exams.length ? 'Upcoming exams' : 'No exams') }</div>
+        </div>
+
+        <div className="semester-summary-right">
+          <div className="sem-badge" title={first ? `${daysUntilFirst} days` : '—'}>
+            {first ? `${daysUntilFirst}` : '—'}
+          </div>
+          <ChevronDown className={`sem-chevron ${expanded ? 'rotated' : ''}`} size={18} />
+        </div>
+      </div>
+
+      <div className={`semester-details-wrapper ${expanded ? 'open' : ''}`}>
+        <div className="semester-details">
+          {exams.length === 0 && <div className="no-exams">No datesheet available</div>}
+          {exams.map((e) => {
+            const tl = timeLeftObj(e.date);
+            return (
+              <div key={e.name} className="semester-exam-row">
+                <div className="exam-left">
+                  <div className="exam-name">{e.name}</div>
+                  <div className="exam-on">{e.date ? e.date.toDateString() : 'TBA'}</div>
+                </div>
+                <div className={`exam-countdown ${!tl ? 'completed' : ''}`}>
+                  {tl ? (
+                    <span>{tl.days}d {String(tl.hours).padStart(2,'0')}h {String(tl.minutes).padStart(2,'0')}m</span>
+                  ) : (
+                    <span>Exam Completed</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const KaMaTi = () => {
   const [activeSection, setActiveSection] = useState('home');
@@ -81,6 +300,9 @@ const KaMaTi = () => {
   const [discussions, setDiscussions] = useState([]);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
+  const [driveViewerOpen, setDriveViewerOpen] = useState(false);
+  const [driveViewerUrl, setDriveViewerUrl] = useState('');
+  const [driveViewerInteractive, setDriveViewerInteractive] = useState(false);
   const [feedback, setFeedback] = useState({ rating: 5, comment: '', name: '' });
   const [newDiscussion, setNewDiscussion] = useState({ title: '', content: '' });
   // Default: show all subjects and semester 3
@@ -174,6 +396,33 @@ const KaMaTi = () => {
     }
   };
 
+  // Drive viewer helpers
+  function getDrivePreviewUrl(url) {
+    try {
+      if (!url) return '';
+      const u = String(url);
+      // match file id patterns like /d/FILE_ID/
+      const m = u.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (m && m[1]) return `https://drive.google.com/file/d/${m[1]}/preview`;
+      // if it's already a drive preview or docs link, return as-is
+      if (u.includes('drive.google.com') || u.includes('docs.google.com')) return u;
+      return u;
+    } catch (e) { return url; }
+  }
+
+  function openDriveViewer(url) {
+    const preview = getDrivePreviewUrl(url);
+    setDriveViewerUrl(preview);
+    setDriveViewerInteractive(false); // default: non-interactive to discourage download
+    setDriveViewerOpen(true);
+  }
+
+  function closeDriveViewer() {
+    setDriveViewerOpen(false);
+    setDriveViewerUrl('');
+    setDriveViewerInteractive(false);
+  }
+
   // Remove loadNotes, not needed anymore
 
   const submitFeedback = async () => {
@@ -252,6 +501,12 @@ const KaMaTi = () => {
 
   return (
     <div className={`kamati-container ${theme}`}>
+      {/* Background layers: faint watermark + subtle drifting smoke */}
+      <div className="site-bg" aria-hidden="true">
+        <div className="bg-watermark">KaMaTi</div>
+        <div className="bg-smoke smoke-1"></div>
+        <div className="bg-smoke smoke-2"></div>
+      </div>
       {/* Top Header with Logo and Theme Toggle */}
       <div className="top-header">
         <div className="logo-header">
@@ -281,7 +536,7 @@ const KaMaTi = () => {
             section="notes"
             onClick={() => setShowNotesModal(true)}
           />
-          <NavigationItem icon={Users} label="Community" section="community" />
+          
           <NavigationItem icon={Info} label="About" section="about" />
           <NavigationItem icon={Mail} label="Contact" section="contact" />
         </div>
@@ -305,13 +560,7 @@ const KaMaTi = () => {
                     <BookOpen size={20} />
                     Explore Notes
                   </Button>
-                  <Button
-                    className="cta-button primary"
-                    onClick={() => setActiveSection('community')}
-                  >
-                    <Users size={20} />
-                    Join Community
-                  </Button>
+                 
                   <Button
                     className="cta-button primary"
                     onClick={() => setActiveSection('team')}
@@ -321,201 +570,130 @@ const KaMaTi = () => {
                   </Button>
                 </div>
               </div>
+              {/* Exam Countdown side: show three semester cards (3,5,7) */}
+              <div className="hero-right">
+                <div className="semester-cards">
+                  <SemesterExamCard semester={3} />
+                  <SemesterExamCard semester={5} />
+                  <SemesterExamCard semester={7} />
+                </div>
+              </div>
             </div>
           </>
         )}
         {/* Glassmorphism Footer - Always at Bottom */}
         <footer className="glass-footer">
-          <div className="footer-content">
-            <div className="footer-section mt-5">
-              <h4><Mail size={18} style={{ marginRight: '8px' }} />Contact</h4>
-              <p>kamatigangofstudy@gmail.com</p>
-            </div>
-            <div className="footer-section mt-5">
-              <h4><a href="https://whatsapp.com/channel/0029Vb6RPBA1NCrTsBR2FD1U" target="_blank" rel="noopener noreferrer"><MessageCircle size={18} style={{ marginRight: '8px' }} />WhatsApp Channel</a></h4>
-            </div>
-            <div className="footer-section mt-5">
-              <p>© 2025 KaMaTi Gang</p>
-            </div>
-          </div>
-        </footer>
-
-        {activeSection === 'community' && (
-          <div className="community-section">
-            <div className="section-header">
-              <h2>Community Discussion</h2>
-              <p>Ask questions, share knowledge, help each other</p>
-            </div>
-
-            <div className="community-layout">
-              <div className="recent-discussions">
-                <h3>Recent Discussions</h3>
-                <div className="discussions-list">
-                  {discussions.length === 0 ? (
-                    <div className="empty-discussions">
-                      <p>No recent discussions</p>
-                    </div>
-                  ) : (
-                    discussions.map((discussion) => (
-                      <Card key={discussion.id} className="discussion-item">
-                        <CardContent>
-                          <div className="discussion-header">
-                            <h4>{discussion.title}</h4>
-                            <div className="discussion-actions">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setReplyingTo(replyingTo === discussion.id ? null : discussion.id)}
-                                className="reply-btn"
-                              >
-                                <Reply size={14} />
-                                Reply
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setShowDeleteConfirm(discussion.id)}
-                              >
-                                <Trash2 size={14} />
-                              </Button>
-                            </div>
-                          </div>
-                          <p>{discussion.content}</p>
-                          <div className="discussion-meta">
-                            <Badge variant="secondary">{discussion.replies || 0} replies</Badge>
-                            <Badge variant="outline">{discussion.upvotes || 0} upvotes</Badge>
-                          </div>
-
-                          {/* Reply Form */}
-                          {replyingTo === discussion.id && (
-                            <div className="reply-form">
-                              <Textarea
-                                placeholder="Write your reply..."
-                                value={newReply}
-                                onChange={(e) => setNewReply(e.target.value)}
-                                className="reply-textarea"
-                                rows={3}
-                              />
-                              <div className="reply-actions">
-                                <Button
-                                  size="sm"
-                                  onClick={() => createReply(discussion.id)}
-                                  className="send-reply-btn"
-                                >
-                                  <Send size={14} />
-                                  Send Reply
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    setReplyingTo(null);
-                                    setNewReply('');
-                                  }}
-                                >
-                                  Cancel
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
+            <div className="footer-content">
+              <div className="footer-left">
+                <div className="footer-contact">
+                  <Mail size={16} style={{ marginRight: '8px' }} />
+                  <a href="mailto:kamatigangofstudy@gmail.com">kamatigangofstudy@gmail.com</a>
                 </div>
               </div>
 
-              <div className="ask-question">
-                <h3>Ask a Question</h3>
-                <Card className="question-form-card">
-                  <CardContent>
-                    <div className="question-form">
-                      <Input
-                        placeholder="Question title..."
-                        value={newDiscussion.title}
-                        onChange={(e) => setNewDiscussion({ ...newDiscussion, title: e.target.value })}
-                        className="question-input"
-                      />
-                      <Textarea
-                        placeholder="Describe your question in detail..."
-                        value={newDiscussion.content}
-                        onChange={(e) => setNewDiscussion({ ...newDiscussion, content: e.target.value })}
-                        className="question-textarea"
-                        rows={6}
-                      />
-                      <Button onClick={createDiscussion} className="post-button">
-                        <MessageCircle size={16} />
-                        Post Question
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+              <div className="footer-center">
+                <a className="whatsapp-link" href="https://whatsapp.com/channel/0029Vb6RPBA1NCrTsBR2FD1U" target="_blank" rel="noopener noreferrer">WhatsApp Channel</a>
+              </div>
+
+              <div className="footer-right">
+                <div className="footer-social">
+                  <a href="https://www.instagram.com/kamati_gang?igsh=MXg3cXh1aHNvOXM1bA==" target="_blank" rel="noopener noreferrer" className="insta-link" aria-label="KaMaTi Gang Instagram">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{verticalAlign:'middle'}}>
+                      <rect x="3" y="3" width="18" height="18" rx="5" stroke="#08B6D4" strokeWidth="1.2" />
+                      <circle cx="12" cy="12" r="3.2" stroke="#08B6D4" strokeWidth="1.2" />
+                      <circle cx="17.5" cy="6.5" r="0.6" fill="#08B6D4" />
+                    </svg>
+                    <span className="insta-text">@kamati_gang</span>
+                  </a>
+                </div>
+                <div className="footer-copy">© 2025 KaMaTi Gang</div>
               </div>
             </div>
-          </div>
-        )}
+        </footer>
+
+        
 
         {activeSection === 'team' && (
           <div className="team-section mb-32 ">
 
             <div className="section-header">
               <h2>Meet the KaMaTi Team</h2>
-              <p>The dedicated developers and contributors behind this hub.</p>
+              <p>The KaMaTi Gang developers working behind the scenes on notes, backend, UI/UX, content, and improvements.</p>
             </div>
 
-            <div className="flex flex-col gap-6 w-full">
-              <Card className="!flex !flex-col !items-start team-member-card">
-                <CardHeader
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "flex-start",
-                    gap: "16px",
-                  }}>
-                  <CardTitle className="text-xl font-bold border-b pb-1">Akshat Pal (Developer)</CardTitle>
-                  <img
-                    src="/images/akshat.jpg"
-                    alt="Akshat Pal Profile"
-                    className="w-28 h-28 rounded-full object-cover"
-                  />
+            <div className="team-grid">
+              <Card className="team-member-card reveal" style={{ animationDelay: '80ms' }}>
+                <CardHeader>
+                  <div className="avatar">
+                    <img
+                      src="/images/akshat-dev.svg"
+                      alt="Akshat Pal — Developer"
+                      className="profile-img"
+                    />
+                  </div>
+                  <div>
+                    <div className="member-name">Akshat Pal</div>
+                    <div className="member-role">DEVELOPER</div>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <p>Building the front-end interface and managing the backend services.</p>
-                  <p>Connect: <a href="https://www.linkedin.com/in/akshatpal2007/" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700 underline">LinkedIn</a></p>
-                </CardContent>
-              </Card>
-              <Card className="!flex !flex-col !items-start team-member-card">
-                <CardHeader 
-                style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "flex-start",
-                    gap: "16px",
-                  }}>
-                  <CardTitle className="text-xl font-bold border-b pb-1">Himanshi Sharma (Developer)</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p>Maintaining code quality and fixing critical bugs.</p>
-                  <p>Connect: <a href="https://www.linkedin.com/in/himanshi-sharma-908341255/" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700 underline">LinkedIn</a></p>
-                </CardContent>
-              </Card>
-              <Card className="!flex !flex-col !items-start team-member-card">
-                <CardHeader 
-                style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "flex-start",
-                    gap: "16px",
-                  }}>
-                  <CardTitle className="text-xl font-bold border-b pb-1">Reachal Jain (Social Media Manager)</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p>Handling Social Media Accounts .</p>
-                  <p>Connect: <a href="https://www.linkedin.com/in/reachal-jain-0946a536b/" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700 underline">LinkedIn</a></p>
+                  <p className="member-desc">Building the front-end interface and managing the backend services.</p>
+                  <Button size="sm" className="linkedin-cta" asChild>
+                    <a href="https://www.linkedin.com/in/akshatpal2007/" target="_blank" rel="noopener noreferrer" aria-label="Akshat on LinkedIn">🔗 LinkedIn</a>
+                  </Button>
                 </CardContent>
               </Card>
 
+              <Card className="team-member-card reveal" style={{ animationDelay: '160ms' }}>
+                <CardHeader>
+                  <div className="avatar">
+                    <img
+                      src="/images/himanshi-dev.svg"
+                      alt="Himanshi Sharma — Developer"
+                      className="profile-img"
+                    />
+                  </div>
+                  <div>
+                    <div className="member-name">Himanshi Sharma</div>
+                    <div className="member-role">DEVELOPER</div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="member-desc">Maintaining code quality and fixing critical bugs.</p>
+                  <Button size="sm" className="linkedin-cta" asChild>
+                    <a href="https://www.linkedin.com/in/himanshi-sharma-908341255/" target="_blank" rel="noopener noreferrer" aria-label="Himanshi on LinkedIn">🔗 LinkedIn</a>
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="team-member-card reveal" style={{ animationDelay: '240ms' }}>
+                <CardHeader>
+                  <div className="avatar">
+                    <img
+                      src="/images/reachal-sm.svg"
+                      alt="Reachal Jain — Social Media Manager"
+                      className="profile-img"
+                    />
+                  </div>
+                  <div>
+                    <div className="member-name">Reachal Jain</div>
+                    <div className="member-role">SOCIAL MEDIA MANAGER</div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="member-desc">Handling Social Media Accounts and community engagement.</p>
+                  <Button size="sm" className="linkedin-cta" asChild>
+                    <a href="https://www.linkedin.com/in/reachal-jain-0946a536b/" target="_blank" rel="noopener noreferrer" aria-label="Reachal on LinkedIn">🔗 LinkedIn</a>
+                  </Button>
+                </CardContent>
+              </Card>
+
             </div>
+
+            <div className="team-footer-note">
+              <small>Want to join? Reach out via our WhatsApp channel or Instagram we're always looking for contributors.</small>
+            </div>
+
           </div>
         )}
 
@@ -655,11 +833,9 @@ const KaMaTi = () => {
                     <p><strong>Uploaded:</strong> {note.uploaded_at}</p>
                   </div>
                   <div className="note-actions">
-                    <Button size="sm" className="view-button" asChild>
-                      <a href={note.file_url} target="_blank" rel="noopener noreferrer">
-                        <Eye size={16} />
-                        View Note
-                      </a>
+                    <Button size="sm" className="view-button" onClick={() => openDriveViewer(note.file_url)}>
+                      <Eye size={16} />
+                      View Note
                     </Button>
                   </div>
                 </CardContent>
@@ -689,6 +865,39 @@ const KaMaTi = () => {
             >
               Cancel
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Drive Viewer Dialog - opens drive links inside an iframe */}
+      <Dialog open={driveViewerOpen} onOpenChange={(open) => { if (!open) closeDriveViewer(); }}>
+        <DialogContent className="drive-viewer-modal">
+          <DialogHeader>
+            <DialogTitle>Document Viewer</DialogTitle>
+          </DialogHeader>
+          <div className="drive-viewer-wrapper">
+            <div className={`drive-iframe-wrap ${driveViewerInteractive ? 'interactive' : ''}`}>
+              {driveViewerUrl ? (
+                <iframe
+                  title="Drive Document"
+                  src={driveViewerUrl}
+                  frameBorder="0"
+                  sandbox="allow-forms allow-same-origin allow-scripts"
+                  allowFullScreen
+                />
+              ) : (
+                <div className="drive-empty">No preview available</div>
+              )}
+              {!driveViewerInteractive && (
+                <div className="drive-blocker" role="button" aria-hidden="true">
+                  <div className="drive-blocker-inner">
+                    <p>Preview mode: downloads and navigation are disabled by default for security.</p>
+                    <button className="enable-interact" onClick={() => setDriveViewerInteractive(true)}>Enable interaction</button>
+                    <button className="close-viewer" onClick={() => closeDriveViewer()}>Close</button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
