@@ -396,25 +396,23 @@ const KaMaTi = () => {
     }
   };
 
-  // Drive viewer helpers
-  function getDrivePreviewUrl(url) {
+  // Drive viewer helpers - now opens directly in Drive
+  function getDriveUrl(url) {
     try {
       if (!url) return '';
       const u = String(url);
       // match file id patterns like /d/FILE_ID/
       const m = u.match(/\/d\/([a-zA-Z0-9_-]+)/);
-      if (m && m[1]) return `https://drive.google.com/file/d/${m[1]}/preview`;
-      // if it's already a drive preview or docs link, return as-is
+      if (m && m[1]) return `https://drive.google.com/file/d/${m[1]}/view`;
+      // if it's already a drive or docs link, return as-is
       if (u.includes('drive.google.com') || u.includes('docs.google.com')) return u;
       return u;
     } catch (e) { return url; }
   }
 
   function openDriveViewer(url) {
-    const preview = getDrivePreviewUrl(url);
-    setDriveViewerUrl(preview);
-    setDriveViewerInteractive(false); // default: non-interactive to discourage download
-    setDriveViewerOpen(true);
+    const driveUrl = getDriveUrl(url);
+    window.open(driveUrl, '_blank');
   }
 
   function closeDriveViewer() {
