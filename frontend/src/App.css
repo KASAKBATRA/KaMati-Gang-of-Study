@@ -1480,13 +1480,13 @@ body {
 
 /* Drive viewer modal styles */
 .drive-viewer-modal {
-  max-width: 1100px;
-  width: 95vw;
-  max-height: 85vh;
+  max-width: 98vw;
+  width: 98vw;
+  max-height: 95vh;
   padding: 0;
 }
 .drive-viewer-wrapper { padding: 12px 18px 22px; }
-.drive-iframe-wrap { position: relative; width: 100%; height: 72vh; background: #08121a; border-radius: 10px; overflow: hidden; }
+.drive-iframe-wrap { position: relative; width: 100%; height: 88vh; background: #08121a; border-radius: 10px; overflow: hidden; }
 .drive-iframe-wrap iframe { width: 100%; height: 100%; border: none; display: block; }
 .drive-empty { display:flex; align-items:center; justify-content:center; height:100%; color:var(--dark-text-secondary); }
 
