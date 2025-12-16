@@ -376,12 +376,12 @@ const KaMaTi = () => {
     // Apply theme to document
     document.documentElement.setAttribute('data-theme', theme);
     // Show feedback popup after 5 minutes, only if not already filled
-    if (!localStorage.getItem('feedbackSubmitted')) {
-      const timer = setTimeout(() => {
-        setShowFeedback(true);
-      }, 300000); // 5 minutes
-      return () => clearTimeout(timer);
-    }
+    // if (!localStorage.getItem('feedbackSubmitted')) {
+    //   const timer = setTimeout(() => {
+    //     setShowFeedback(true);
+    //   }, 300000); // 5 minutes
+    //   return () => clearTimeout(timer);
+    // }
     // Load discussions only (notes are static from notesData)
     loadDiscussions();
     setNotes(allNotes);
