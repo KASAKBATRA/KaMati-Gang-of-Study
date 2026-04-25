@@ -11,6 +11,7 @@ import uuid
 from datetime import datetime, timezone
 import requests
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -254,45 +255,45 @@ def fetch_notes_from_apps_script(
     default_semester: str,
     default_subject: str,
 ) -> List[Note]:
-    merged_items: List[dict] = []
-    failed_folders: List[str] = []
-
-    for folder_url in folder_urls:
+    def fetch_single_folder(folder_url: str) -> dict:
         params = {
             "folder_urls": folder_url,
             "recursive": "true",
         }
-
-        # Apps Script can be cold-start slow, especially with deep nested folders.
-        response = None
-        attempts = 2
-        for attempt in range(attempts):
-            try:
-                response = requests.get(apps_script_url, params=params, timeout=(15, 120))
-                break
-            except requests.exceptions.ReadTimeout:
-                if attempt == attempts - 1:
-                    failed_folders.append(folder_url)
-
-        if response is None:
-            continue
+        try:
+            # Keep per-folder timeout bounded so one large folder does not block all results.
+            response = requests.get(apps_script_url, params=params, timeout=(10, 45))
+        except requests.exceptions.ReadTimeout:
+            return {"folder_url": folder_url, "items": [], "error": "timeout"}
+        except Exception as exc:
+            return {"folder_url": folder_url, "items": [], "error": str(exc)}
 
         if response.status_code != 200:
-            failed_folders.append(folder_url)
-            continue
+            return {"folder_url": folder_url, "items": [], "error": f"http_{response.status_code}"}
 
         try:
             payload = response.json()
         except ValueError:
-            failed_folders.append(folder_url)
-            continue
+            return {"folder_url": folder_url, "items": [], "error": "invalid_json"}
 
         items = payload if isinstance(payload, list) else payload.get("files", [])
         if not isinstance(items, list):
-            failed_folders.append(folder_url)
-            continue
+            return {"folder_url": folder_url, "items": [], "error": "invalid_format"}
 
-        merged_items.extend(items)
+        return {"folder_url": folder_url, "items": items, "error": None}
+
+    merged_items: List[dict] = []
+    failed_folders: List[str] = []
+
+    max_workers = min(4, max(1, len(folder_urls)))
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(fetch_single_folder, folder_url) for folder_url in folder_urls]
+        for future in as_completed(futures):
+            result = future.result()
+            if result.get("error"):
+                failed_folders.append(result["folder_url"])
+                continue
+            merged_items.extend(result.get("items", []))
 
     if not merged_items:
         if failed_folders:
