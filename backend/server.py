@@ -254,43 +254,74 @@ def fetch_notes_from_apps_script(
     default_semester: str,
     default_subject: str,
 ) -> List[Note]:
-    params = {
-        "folder_urls": ",".join(folder_urls),
-        "recursive": "true",
-    }
-    # Apps Script can be cold-start slow, especially with deep nested folders.
-    response = None
-    attempts = 2
-    for attempt in range(attempts):
+    merged_items: List[dict] = []
+    failed_folders: List[str] = []
+
+    for folder_url in folder_urls:
+        params = {
+            "folder_urls": folder_url,
+            "recursive": "true",
+        }
+
+        # Apps Script can be cold-start slow, especially with deep nested folders.
+        response = None
+        attempts = 2
+        for attempt in range(attempts):
+            try:
+                response = requests.get(apps_script_url, params=params, timeout=(15, 120))
+                break
+            except requests.exceptions.ReadTimeout:
+                if attempt == attempts - 1:
+                    failed_folders.append(folder_url)
+
+        if response is None:
+            continue
+
+        if response.status_code != 200:
+            failed_folders.append(folder_url)
+            continue
+
         try:
-            response = requests.get(apps_script_url, params=params, timeout=(15, 120))
-            break
-        except requests.exceptions.ReadTimeout:
-            if attempt == attempts - 1:
-                raise HTTPException(
-                    status_code=504,
-                    detail=(
-                        "Apps Script timed out while scanning Drive folders. "
-                        "Try again in 30-60 seconds or reduce folder depth/size."
-                    ),
-                )
+            payload = response.json()
+        except ValueError:
+            failed_folders.append(folder_url)
+            continue
 
-    if response is None:
-        raise HTTPException(status_code=500, detail="Apps Script request failed")
+        items = payload if isinstance(payload, list) else payload.get("files", [])
+        if not isinstance(items, list):
+            failed_folders.append(folder_url)
+            continue
 
-    if response.status_code != 200:
-        raise HTTPException(
-            status_code=response.status_code,
-            detail=f"Apps Script fetch error: {response.text}",
-        )
+        merged_items.extend(items)
 
-    payload = response.json()
-    items = payload if isinstance(payload, list) else payload.get("files", [])
-    if not isinstance(items, list):
-        raise HTTPException(status_code=500, detail="Apps Script returned invalid response format")
+    if not merged_items:
+        if failed_folders:
+            raise HTTPException(
+                status_code=504,
+                detail=(
+                    "Apps Script failed for all folder URLs. "
+                    "Verify folder access and script permissions."
+                ),
+            )
+        raise HTTPException(status_code=500, detail="Apps Script returned no items")
+
+    deduped_items_by_id = {}
+    for item in merged_items:
+        item_id = item.get("id")
+        if not item_id:
+            continue
+        existing = deduped_items_by_id.get(item_id)
+        if not existing:
+            deduped_items_by_id[item_id] = item
+            continue
+
+        existing_time = existing.get("modifiedTime") or existing.get("uploaded_at") or ""
+        current_time = item.get("modifiedTime") or item.get("uploaded_at") or ""
+        if str(current_time) > str(existing_time):
+            deduped_items_by_id[item_id] = item
 
     notes: List[Note] = []
-    for item in items:
+    for item in deduped_items_by_id.values():
         title = item.get("title") or item.get("name") or "Untitled"
         file_id = item.get("id") or str(uuid.uuid4())
         file_url = (
