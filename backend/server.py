@@ -129,7 +129,7 @@ def format_file_size(size_in_bytes: Optional[str]) -> Optional[str]:
     return f"{value:.1f} {units[idx]}"
 
 
-def infer_semester_from_title(title: str, fallback: str = "") -> str:
+def infer_semester_from_title(title: str, fallback: str = "3") -> str:
     if not title:
         return fallback
 
@@ -147,21 +147,6 @@ def infer_semester_from_title(title: str, fallback: str = "") -> str:
                 return value
 
     return fallback
-
-
-def parse_semester_overrides(raw_value: Optional[str]) -> List[str]:
-    if not raw_value:
-        return []
-
-    values = re.split(r"[,;\n\r]+", raw_value)
-    parsed: List[str] = []
-    for value in values:
-        v = value.strip()
-        if v in {"1", "2", "3", "4", "5", "6", "7", "8"}:
-            parsed.append(v)
-        else:
-            parsed.append("")
-    return parsed
 
 
 def infer_subject_from_title(title: str, fallback: str = "General") -> str:
@@ -328,7 +313,7 @@ def fetch_notes_from_apps_script(
                 id=file_id,
                 title=title,
                 subject=item.get("subject") or infer_subject_from_title(title, fallback=default_subject),
-                semester=str(item.get("semester") or infer_semester_from_title(title, fallback=default_semester) or ""),
+                semester=str(item.get("semester") or infer_semester_from_title(title, fallback=default_semester)),
                 size=item.get("size") or format_file_size(item.get("size_bytes")),
                 file_url=file_url,
                 uploaded_at=uploaded_at,
@@ -623,8 +608,7 @@ async def search_discussions(q: str):
 async def get_drive_notes(
     folder_url: Optional[str] = Query(default=None),
     folder_urls: Optional[str] = Query(default=None),
-    semester: Optional[str] = Query(default=None),
-    folder_semesters: Optional[str] = Query(default=None),
+    semester: Optional[str] = Query(default="3"),
     subject: Optional[str] = Query(default="General")
 ):
     """Fetch notes recursively from one or many Drive folders so nested folders/files auto-sync."""
@@ -642,12 +626,6 @@ async def get_drive_notes(
                 detail="Provide folder_urls/folder_url query param or DRIVE_FOLDER_URLS/DRIVE_FOLDER_URL env"
             )
 
-        raw_semester_overrides = (
-            folder_semesters
-            or os.environ.get("DRIVE_FOLDER_SEMESTERS")
-        )
-        semester_overrides = parse_semester_overrides(raw_semester_overrides)
-
         drive_api_key = os.environ.get("DRIVE_API_KEY")
         if not drive_api_key:
             apps_script_url = os.environ.get("DRIVE_APPS_SCRIPT_URL")
@@ -657,40 +635,21 @@ async def get_drive_notes(
                     detail="Set DRIVE_API_KEY or DRIVE_APPS_SCRIPT_URL on backend"
                 )
 
-            notes: List[Note] = []
-            for idx, root_url in enumerate(effective_folder_urls):
-                default_semester = semester_overrides[idx] if idx < len(semester_overrides) else (semester or "")
-                notes.extend(
-                    fetch_notes_from_apps_script(
-                        apps_script_url=apps_script_url,
-                        folder_urls=[root_url],
-                        default_semester=default_semester,
-                        default_subject=subject or "General",
-                    )
-                )
-
-            # Deduplicate by file id across multiple roots.
-            deduped_notes = {}
-            for note in notes:
-                existing = deduped_notes.get(note.id)
-                if not existing or note.uploaded_at > existing.uploaded_at:
-                    deduped_notes[note.id] = note
-
-            notes = list(deduped_notes.values())
+            notes = fetch_notes_from_apps_script(
+                apps_script_url=apps_script_url,
+                folder_urls=effective_folder_urls,
+                default_semester=semester or "3",
+                default_subject=subject or "General",
+            )
             notes.sort(key=lambda note: note.uploaded_at, reverse=True)
             return notes
 
         all_files: List[dict] = []
-        for idx, current_folder_url in enumerate(effective_folder_urls):
+        for current_folder_url in effective_folder_urls:
             folder_id = extract_drive_folder_id(current_folder_url)
             if not folder_id:
                 raise HTTPException(status_code=400, detail=f"Invalid Google Drive folder URL: {current_folder_url}")
-            root_semester = semester_overrides[idx] if idx < len(semester_overrides) else (semester or "")
-            root_files = fetch_drive_files_recursively(root_folder_id=folder_id, api_key=drive_api_key)
-            for item in root_files:
-                item_copy = dict(item)
-                item_copy["_rootSemester"] = root_semester
-                all_files.append(item_copy)
+            all_files.extend(fetch_drive_files_recursively(root_folder_id=folder_id, api_key=drive_api_key))
 
         deduped_files_by_id = {}
         for item in all_files:
@@ -725,7 +684,7 @@ async def get_drive_notes(
                     id=file.get("id") or str(uuid.uuid4()),
                     title=title,
                     subject=infer_subject_from_title(title, fallback=subject or "General"),
-                    semester=infer_semester_from_title(title, fallback=file.get("_rootSemester") or semester or "") or "",
+                    semester=infer_semester_from_title(title, fallback=semester or "3"),
                     size=format_file_size(file.get("size")),
                     file_url=file_url,
                     uploaded_at=uploaded_at,
