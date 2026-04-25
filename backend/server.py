@@ -258,7 +258,26 @@ def fetch_notes_from_apps_script(
         "folder_urls": ",".join(folder_urls),
         "recursive": "true",
     }
-    response = requests.get(apps_script_url, params=params, timeout=30)
+    # Apps Script can be cold-start slow, especially with deep nested folders.
+    response = None
+    attempts = 2
+    for attempt in range(attempts):
+        try:
+            response = requests.get(apps_script_url, params=params, timeout=(15, 120))
+            break
+        except requests.exceptions.ReadTimeout:
+            if attempt == attempts - 1:
+                raise HTTPException(
+                    status_code=504,
+                    detail=(
+                        "Apps Script timed out while scanning Drive folders. "
+                        "Try again in 30-60 seconds or reduce folder depth/size."
+                    ),
+                )
+
+    if response is None:
+        raise HTTPException(status_code=500, detail="Apps Script request failed")
+
     if response.status_code != 200:
         raise HTTPException(
             status_code=response.status_code,
