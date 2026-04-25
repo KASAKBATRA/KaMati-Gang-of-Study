@@ -247,6 +247,62 @@ def fetch_drive_files_recursively(root_folder_id: str, api_key: str) -> List[dic
 
     return files
 
+
+def fetch_notes_from_apps_script(
+    apps_script_url: str,
+    folder_urls: List[str],
+    default_semester: str,
+    default_subject: str,
+) -> List[Note]:
+    params = {
+        "folder_urls": ",".join(folder_urls),
+        "recursive": "true",
+    }
+    response = requests.get(apps_script_url, params=params, timeout=30)
+    if response.status_code != 200:
+        raise HTTPException(
+            status_code=response.status_code,
+            detail=f"Apps Script fetch error: {response.text}",
+        )
+
+    payload = response.json()
+    items = payload if isinstance(payload, list) else payload.get("files", [])
+    if not isinstance(items, list):
+        raise HTTPException(status_code=500, detail="Apps Script returned invalid response format")
+
+    notes: List[Note] = []
+    for item in items:
+        title = item.get("title") or item.get("name") or "Untitled"
+        file_id = item.get("id") or str(uuid.uuid4())
+        file_url = (
+            item.get("file_url")
+            or item.get("url")
+            or item.get("webViewLink")
+            or f"https://drive.google.com/file/d/{file_id}/view"
+        )
+
+        uploaded_at_value = item.get("uploaded_at") or item.get("modifiedTime")
+        uploaded_at = datetime.now(timezone.utc)
+        if uploaded_at_value:
+            try:
+                uploaded_at = datetime.fromisoformat(str(uploaded_at_value).replace("Z", "+00:00"))
+            except ValueError:
+                pass
+
+        notes.append(
+            Note(
+                id=file_id,
+                title=title,
+                subject=item.get("subject") or infer_subject_from_title(title, fallback=default_subject),
+                semester=str(item.get("semester") or infer_semester_from_title(title, fallback=default_semester)),
+                size=item.get("size") or format_file_size(item.get("size_bytes")),
+                file_url=file_url,
+                uploaded_at=uploaded_at,
+            )
+        )
+
+    return notes
+
 # Helper functions for MongoDB serialization
 def prepare_for_mongo(data):
     """Convert datetime objects to ISO strings for MongoDB storage"""
@@ -538,10 +594,6 @@ async def get_drive_notes(
 ):
     """Fetch notes recursively from one or many Drive folders so nested folders/files auto-sync."""
     try:
-        drive_api_key = os.environ.get("DRIVE_API_KEY")
-        if not drive_api_key:
-            raise HTTPException(status_code=500, detail="DRIVE_API_KEY is not configured on backend")
-
         raw_folder_inputs = (
             folder_urls
             or folder_url
@@ -554,6 +606,24 @@ async def get_drive_notes(
                 status_code=400,
                 detail="Provide folder_urls/folder_url query param or DRIVE_FOLDER_URLS/DRIVE_FOLDER_URL env"
             )
+
+        drive_api_key = os.environ.get("DRIVE_API_KEY")
+        if not drive_api_key:
+            apps_script_url = os.environ.get("DRIVE_APPS_SCRIPT_URL")
+            if not apps_script_url:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Set DRIVE_API_KEY or DRIVE_APPS_SCRIPT_URL on backend"
+                )
+
+            notes = fetch_notes_from_apps_script(
+                apps_script_url=apps_script_url,
+                folder_urls=effective_folder_urls,
+                default_semester=semester or "3",
+                default_subject=subject or "General",
+            )
+            notes.sort(key=lambda note: note.uploaded_at, reverse=True)
+            return notes
 
         all_files: List[dict] = []
         for current_folder_url in effective_folder_urls:
