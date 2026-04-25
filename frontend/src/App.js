@@ -299,7 +299,7 @@ const KaMaTi = () => {
   const [feedback, setFeedback] = useState({ rating: 5, comment: '', name: '' });
   const [newDiscussion, setNewDiscussion] = useState({ title: '', content: '' });
   // Default: show all subjects and semester 3
-  const [filters, setFilters] = useState({ year: '', subject: 'all', semester: '3' });
+  const [filters, setFilters] = useState({ year: '', subject: 'all', semester: 'all' });
   const [theme, setTheme] = useState('dark'); // 'light' or 'dark'
   const [searchQuery, setSearchQuery] = useState('');
   const [replyingTo, setReplyingTo] = useState(null);

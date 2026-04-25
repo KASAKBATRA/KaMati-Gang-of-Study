@@ -13,6 +13,7 @@ In `backend/.env` set:
 - `DRIVE_API_KEY` = your Google Drive API key
 - `DRIVE_FOLDER_URL` = one shared Google Drive folder link (legacy/single)
 - `DRIVE_FOLDER_URLS` = many folder links separated by commas or new lines
+- `DRIVE_FOLDER_SEMESTERS` = optional semester mapping per folder URL (example: `3,4,5,6`)
 - `DRIVE_APPS_SCRIPT_URL` = optional no-billing fallback endpoint (used when `DRIVE_API_KEY` is not set)
 
 If you do not want to add billing details for Google Cloud API key, use Google Apps Script as fallback and set only `DRIVE_APPS_SCRIPT_URL`.
@@ -44,6 +45,7 @@ Multi-folder example:
 - Frontend re-fetches every configured interval.
 - New files added in any configured Drive folder appear automatically in the notes list.
 - Files inside nested subfolders are also auto-fetched.
+- If semester is not detected from file name, backend uses `DRIVE_FOLDER_SEMESTERS` mapping when provided.
 
 ### 5) No-card fallback (Google Apps Script)
 
