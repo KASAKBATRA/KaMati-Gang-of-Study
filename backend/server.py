@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi import FastAPI, APIRouter, HTTPException, Query
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 import uuid
 from datetime import datetime, timezone
+import requests
+import re
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -78,6 +80,172 @@ class FeedbackCreate(BaseModel):
     rating: int
     comment: Optional[str] = None
     name: Optional[str] = None
+
+
+def extract_drive_folder_id(folder_url: str) -> Optional[str]:
+    if not folder_url:
+        return None
+
+    patterns = [
+        r"/folders/([a-zA-Z0-9_-]+)",
+        r"id=([a-zA-Z0-9_-]+)",
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, folder_url)
+        if match:
+            return match.group(1)
+
+    return None
+
+
+def parse_folder_urls(raw_value: Optional[str]) -> List[str]:
+    if not raw_value:
+        return []
+
+    split_values = re.split(r"[,;\n\r]+", raw_value)
+    cleaned = [item.strip() for item in split_values if item and item.strip()]
+
+    # Preserve order while removing duplicates.
+    return list(dict.fromkeys(cleaned))
+
+
+def format_file_size(size_in_bytes: Optional[str]) -> Optional[str]:
+    if not size_in_bytes:
+        return None
+    try:
+        value = float(size_in_bytes)
+    except (TypeError, ValueError):
+        return None
+
+    units = ["B", "KB", "MB", "GB", "TB"]
+    idx = 0
+    while value >= 1024 and idx < len(units) - 1:
+        value /= 1024
+        idx += 1
+
+    if units[idx] in {"B", "KB"}:
+        return f"{int(value)} {units[idx]}"
+    return f"{value:.1f} {units[idx]}"
+
+
+def infer_semester_from_title(title: str, fallback: str = "3") -> str:
+    if not title:
+        return fallback
+
+    lowered = title.lower()
+    patterns = [
+        r"\bsem(?:ester)?\s*[-_]?\s*(\d)\b",
+        r"\b(\d)(?:st|nd|rd|th)?\s*sem(?:ester)?\b",
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, lowered)
+        if match:
+            value = match.group(1)
+            if value in {"1", "2", "3", "4", "5", "6", "7", "8"}:
+                return value
+
+    return fallback
+
+
+def infer_subject_from_title(title: str, fallback: str = "General") -> str:
+    if not title:
+        return fallback
+
+    # Lightweight keyword mapping so notes remain filterable in the frontend.
+    keyword_subject_map = [
+        ("data science", "Data Science"),
+        ("fods", "Data Science"),
+        ("machine learning", "Machine Learning"),
+        ("ml", "Machine Learning"),
+        ("dbms", "Database Management System"),
+        ("cn", "Computer Networks and Internet Protocols"),
+        ("cnip", "Computer Networks and Internet Protocols"),
+        ("java", "Object Oriented Programming in Java"),
+        ("oops", "Object Oriented Programming in Java"),
+        ("os", "Operating System"),
+        ("dld", "Digital Logic Design"),
+        ("pai", "Principles of Artificial Intelligence"),
+        ("psla", "Probability, Statistics and Linear Algebra"),
+        ("uhv", "Universal Human Values"),
+        ("crst", "Critical Reasoning, System Thinking"),
+    ]
+
+    lowered = title.lower()
+    for keyword, subject in keyword_subject_map:
+        if keyword in lowered:
+            return subject
+
+    return fallback
+
+
+def fetch_drive_items_from_folder(folder_id: str, api_key: str) -> List[dict]:
+    items: List[dict] = []
+    base_url = "https://www.googleapis.com/drive/v3/files"
+    query = f"'{folder_id}' in parents and trashed = false"
+
+    page_token = None
+    while True:
+        params = {
+            "q": query,
+            "fields": "nextPageToken,files(id,name,size,modifiedTime,webViewLink,mimeType,shortcutDetails(targetId,targetMimeType))",
+            "orderBy": "modifiedTime desc",
+            "pageSize": 100,
+            "key": api_key,
+            "supportsAllDrives": "true",
+            "includeItemsFromAllDrives": "true",
+        }
+        if page_token:
+            params["pageToken"] = page_token
+
+        response = requests.get(base_url, params=params, timeout=20)
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail=f"Drive API error: {response.text}")
+
+        payload = response.json()
+        items.extend(payload.get("files", []))
+        page_token = payload.get("nextPageToken")
+        if not page_token:
+            break
+
+    return items
+
+
+def fetch_drive_files_recursively(root_folder_id: str, api_key: str) -> List[dict]:
+    files: List[dict] = []
+    folder_queue: List[str] = [root_folder_id]
+    visited_folders = set()
+
+    while folder_queue:
+        current_folder_id = folder_queue.pop(0)
+        if current_folder_id in visited_folders:
+            continue
+        visited_folders.add(current_folder_id)
+
+        items = fetch_drive_items_from_folder(current_folder_id, api_key)
+        for item in items:
+            mime_type = item.get("mimeType") or ""
+            item_id = item.get("id")
+
+            if mime_type == "application/vnd.google-apps.folder":
+                if item_id and item_id not in visited_folders:
+                    folder_queue.append(item_id)
+                continue
+
+            # Handle shortcuts that point to folders/files.
+            if mime_type == "application/vnd.google-apps.shortcut":
+                shortcut = item.get("shortcutDetails") or {}
+                target_id = shortcut.get("targetId")
+                target_mime_type = shortcut.get("targetMimeType") or ""
+                if target_mime_type == "application/vnd.google-apps.folder":
+                    if target_id and target_id not in visited_folders:
+                        folder_queue.append(target_id)
+                    continue
+
+            files.append(item)
+
+    return files
 
 # Helper functions for MongoDB serialization
 def prepare_for_mongo(data):
@@ -357,6 +525,87 @@ async def search_discussions(q: str):
         
         discussions = await db.discussions.find(filter_query).sort("created_at", -1).to_list(length=None)
         return [Discussion(**parse_from_mongo(discussion)) for discussion in discussions]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/drive-notes", response_model=List[Note])
+async def get_drive_notes(
+    folder_url: Optional[str] = Query(default=None),
+    folder_urls: Optional[str] = Query(default=None),
+    semester: Optional[str] = Query(default="3"),
+    subject: Optional[str] = Query(default="General")
+):
+    """Fetch notes recursively from one or many Drive folders so nested folders/files auto-sync."""
+    try:
+        drive_api_key = os.environ.get("DRIVE_API_KEY")
+        if not drive_api_key:
+            raise HTTPException(status_code=500, detail="DRIVE_API_KEY is not configured on backend")
+
+        raw_folder_inputs = (
+            folder_urls
+            or folder_url
+            or os.environ.get("DRIVE_FOLDER_URLS")
+            or os.environ.get("DRIVE_FOLDER_URL")
+        )
+        effective_folder_urls = parse_folder_urls(raw_folder_inputs)
+        if not effective_folder_urls:
+            raise HTTPException(
+                status_code=400,
+                detail="Provide folder_urls/folder_url query param or DRIVE_FOLDER_URLS/DRIVE_FOLDER_URL env"
+            )
+
+        all_files: List[dict] = []
+        for current_folder_url in effective_folder_urls:
+            folder_id = extract_drive_folder_id(current_folder_url)
+            if not folder_id:
+                raise HTTPException(status_code=400, detail=f"Invalid Google Drive folder URL: {current_folder_url}")
+            all_files.extend(fetch_drive_files_recursively(root_folder_id=folder_id, api_key=drive_api_key))
+
+        deduped_files_by_id = {}
+        for item in all_files:
+            file_id = item.get("id")
+            if not file_id:
+                continue
+            existing = deduped_files_by_id.get(file_id)
+            if not existing:
+                deduped_files_by_id[file_id] = item
+                continue
+
+            # If duplicate appears from multiple shared folders, keep latest modified entry.
+            existing_time = existing.get("modifiedTime") or ""
+            current_time = item.get("modifiedTime") or ""
+            if current_time > existing_time:
+                deduped_files_by_id[file_id] = item
+
+        notes: List[Note] = []
+        for file in deduped_files_by_id.values():
+            title = file.get("name") or "Untitled"
+            file_url = file.get("webViewLink") or f"https://drive.google.com/file/d/{file.get('id', '')}/view"
+            uploaded_at_value = file.get("modifiedTime")
+            uploaded_at = datetime.now(timezone.utc)
+            if uploaded_at_value:
+                try:
+                    uploaded_at = datetime.fromisoformat(uploaded_at_value.replace("Z", "+00:00"))
+                except ValueError:
+                    pass
+
+            notes.append(
+                Note(
+                    id=file.get("id") or str(uuid.uuid4()),
+                    title=title,
+                    subject=infer_subject_from_title(title, fallback=subject or "General"),
+                    semester=infer_semester_from_title(title, fallback=semester or "3"),
+                    size=format_file_size(file.get("size")),
+                    file_url=file_url,
+                    uploaded_at=uploaded_at,
+                )
+            )
+
+        notes.sort(key=lambda note: note.uploaded_at, reverse=True)
+        return notes
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

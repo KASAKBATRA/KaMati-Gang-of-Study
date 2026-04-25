@@ -13,7 +13,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { Home, BookOpen, Mail, MessageCircle, Star, Eye, Info, Phone, Sun, Moon, Search, Trash2, Reply, Send, Handshake, ChevronDown } from 'lucide-react';
-import notesData from './notes/notesData';
 // Semester to subjects mapping
 const semesterSubjects = {
   3: [
@@ -120,6 +119,11 @@ const todaysTargets = [
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+const DRIVE_FOLDER_URL = process.env.REACT_APP_DRIVE_FOLDER_URL || '';
+const DRIVE_FOLDER_URLS = process.env.REACT_APP_DRIVE_FOLDER_URLS || '';
+const NOTES_SYNC_INTERVAL_MS = Number(process.env.REACT_APP_NOTES_SYNC_INTERVAL_MS || 60000) > 0
+  ? Number(process.env.REACT_APP_NOTES_SYNC_INTERVAL_MS || 60000)
+  : 60000;
 
 // Exam countdown component
 function ExamCountdown({ semester }) {
@@ -277,18 +281,6 @@ function SemesterExamCard({ semester }) {
 
 const KaMaTi = () => {
   const [activeSection, setActiveSection] = useState('home');
-  // Flatten notesData into a single array for easier filtering
-  const allNotes = Object.entries(notesData).flatMap(([subject, notes]) =>
-    notes.map((note, idx) => ({
-      id: `${subject}-${idx}`,
-      title: note.title,
-      semester: note.semester,
-      subject,
-      size: note.size || '2 MB',
-      file_url: note.url,
-      uploaded_at: note.uploaded_at || '',
-    }))
-  );
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
@@ -296,8 +288,9 @@ const KaMaTi = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  const [notes, setNotes] = useState(allNotes);
+  const [notes, setNotes] = useState([]);
   const [discussions, setDiscussions] = useState([]);
+  const [notesLoadError, setNotesLoadError] = useState('');
   const [showFeedback, setShowFeedback] = useState(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [driveViewerOpen, setDriveViewerOpen] = useState(false);
@@ -313,65 +306,6 @@ const KaMaTi = () => {
   const [newReply, setNewReply] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
 
-  // Sample notes data - will be replaced with real database data
-  const sampleNotes = [
-    {
-      id: '1',
-      title: 'Linear Regression Notes',
-      semester: '3',
-      subject: 'Data Science',
-      size: '2.1 MB',
-      file_url: '#',
-      uploaded_at: '2024-12-01'
-    },
-    {
-      id: '2',
-      title: 'FODS Assignment Solutions',
-      semester: '3',
-      subject: 'Data Science',
-      size: '1.8 MB',
-      file_url: '#',
-      uploaded_at: '2024-11-28'
-    },
-    {
-      id: '3',
-      title: 'Machine Learning Basics',
-      semester: '3',
-      subject: 'Data Science',
-      size: '3.2 MB',
-      file_url: '#',
-      uploaded_at: '2024-11-25'
-    },
-    {
-      id: '4',
-      title: 'Python Programming Guide',
-      semester: '3',
-      subject: 'Computer Science',
-      size: '2.5 MB',
-      file_url: '#',
-      uploaded_at: '2024-11-20'
-    },
-    {
-      id: '5',
-      title: 'Database Management System',
-      semester: '4',
-      subject: 'Computer Science',
-      size: '4.1 MB',
-      file_url: '#',
-      uploaded_at: '2024-11-15'
-    },
-    {
-      id: '6',
-      title: 'Web Development Fundamentals',
-      semester: '4',
-      subject: 'Computer Science',
-      size: '3.8 MB',
-      file_url: '#',
-      uploaded_at: '2024-11-10'
-    }
-  ];
-
-
   useEffect(() => {
     // Apply theme to document
     document.documentElement.setAttribute('data-theme', theme);
@@ -382,10 +316,51 @@ const KaMaTi = () => {
     //   }, 300000); // 5 minutes
     //   return () => clearTimeout(timer);
     // }
-    // Load discussions only (notes are static from notesData)
-    loadDiscussions();
-    setNotes(allNotes);
   }, [theme]);
+
+  useEffect(() => {
+    loadDiscussions();
+    loadDriveNotes();
+
+    const intervalId = setInterval(() => {
+      loadDriveNotes();
+    }, NOTES_SYNC_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, []);
+
+  const normalizeDriveNote = (note, idx) => ({
+    id: note.id || note._id || `drive-note-${idx}`,
+    title: note.title || 'Untitled',
+    semester: String(note.semester || '3'),
+    subject: note.subject || 'General',
+    size: note.size || 'N/A',
+    file_url: note.file_url || note.driveUrl || '#',
+    uploaded_at: note.uploaded_at ? String(note.uploaded_at).slice(0, 10) : '',
+  });
+
+  const loadDriveNotes = async () => {
+    try {
+      const params = {};
+      if (DRIVE_FOLDER_URLS) {
+        params.folder_urls = DRIVE_FOLDER_URLS;
+      } else if (DRIVE_FOLDER_URL) {
+        params.folder_url = DRIVE_FOLDER_URL;
+      }
+
+      const response = await axios.get(`${API}/drive-notes`, { params });
+      const formatted = Array.isArray(response.data)
+        ? response.data.map((note, idx) => normalizeDriveNote(note, idx))
+        : [];
+
+      setNotes(formatted);
+      setNotesLoadError('');
+    } catch (error) {
+      console.error('Error loading Drive notes:', error);
+      const message = error?.response?.data?.detail || 'Failed to load notes from Drive folder';
+      setNotesLoadError(String(message));
+    }
+  };
 
   const loadDiscussions = async () => {
     try {
@@ -488,12 +463,13 @@ const KaMaTi = () => {
     </div>
   );
 
-  // Fix filtering logic for new notesData structure
   const filteredNotes = notes.filter(note => {
-    const matchesSearch = note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.subject.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesSemester = filters.semester === 'all' || note.semester === filters.semester;
-    const matchesSubject = filters.subject === 'all' || note.subject === filters.subject;
+    const title = (note.title || '').toLowerCase();
+    const subject = (note.subject || '').toLowerCase();
+    const semester = String(note.semester || '');
+    const matchesSearch = title.includes(searchQuery.toLowerCase()) || subject.includes(searchQuery.toLowerCase());
+    const matchesSemester = filters.semester === 'all' || semester === filters.semester;
+    const matchesSubject = filters.subject === 'all' || (note.subject || '') === filters.subject;
     return matchesSearch && matchesSemester && matchesSubject;
   });
 
@@ -566,14 +542,6 @@ const KaMaTi = () => {
                     <Handshake size={20} />
                     Meet Our Team
                   </Button>
-                </div>
-              </div>
-              {/* Exam Countdown side: show three semester cards (3,5,7) */}
-              <div className="hero-right">
-                <div className="semester-cards">
-                  <SemesterExamCard semester={3} />
-                  <SemesterExamCard semester={5} />
-                  <SemesterExamCard semester={7} />
                 </div>
               </div>
             </div>
@@ -820,6 +788,7 @@ const KaMaTi = () => {
             </div>
           </div>
           <div className="notes-grid">
+            {notesLoadError && <p className="text-red-500 mb-2">{notesLoadError}</p>}
             {filteredNotes.map((note) => (
               <Card key={note.id} className="note-card">
                 <CardContent>
