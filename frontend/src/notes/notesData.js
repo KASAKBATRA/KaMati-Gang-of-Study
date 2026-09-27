@@ -657,7 +657,9 @@
       { title: "KASAK DIP LAB MANUAL.pdf", url: "https://drive.google.com/file/d/17in1DXspkamaG4nVLULx_m02V2rwy3f8/view?usp=drivesdk", semester: "6" },
       { title: "DIP Lab Manual final edit Jyoti Rana.pdf", url: "https://drive.google.com/file/d/16C0QdLSHrDCu2VaVbgYHirHz8lT4Zmh2/view?usp=drivesdk", semester: "6" },
       { title: "FRONT DIP.pdf", url: "https://drive.google.com/file/d/1aB0aSVy57gUSzZJfRKt16nH3qjlu3SmI/view?usp=drivesdk", semester: "6" }
-    ],.pdf", url: "https://drive.google.com/file/d/19wCZIwRJMjUTCPt4E3a9a5vYv3xZc0XK/view?usp=drivesdk", semester: "7", size: "PDF" },
+    ],
+    "Practical Files (Sem 7)": [
+      { title: "Yashu summer training[1].pdf", url: "https://drive.google.com/file/d/19wCZIwRJMjUTCPt4E3a9a5vYv3xZc0XK/view?usp=drivesdk", semester: "7", size: "PDF" },
       { title: "Yashu summer training[1] (1).pdf", url: "https://drive.google.com/file/d/1pw-Df6RET2GWRXmDc6xerrdOEu9kTsuP/view?usp=drivesdk", semester: "7", size: "PDF" },
       { title: "front PREETI.docx", url: "https://docs.google.com/document/d/1s4oRovOcVYVyRt-qCL34iI3TAX9i6Zuj/edit?usp=drivesdk&ouid=118344210213548932667&rtpof=true&sd=true", semester: "7", size: "DOC" },
       { title: "front MADHAV & YASHU.pdf", url: "https://drive.google.com/file/d/1v5NutgRU1q5vQfd2MXJJEz_G5RNJHVrX/view?usp=drivesdk", semester: "7", size: "PDF" },
