@@ -16,6 +16,14 @@ import { Home, BookOpen, Mail, MessageCircle, Star, Eye, Info, Phone, Sun, Moon,
 import notesData from './notes/notesData';
 // Semester to subjects mapping
 const semesterSubjects = {
+  1: [
+    "Communication Skills",
+    "Environmental Studies",
+    "Manufacturing Process",
+    "Engineering Mathematics",
+    "Engineering Physics",
+    "Programming in C"
+  ],
   3: [
     "Syllabus",
     "Data Science",
@@ -50,6 +58,16 @@ const semesterSubjects = {
     "Cognitive Computing",
     "Blockchain Technology",
     "Cloud Computing"
+  ],
+  7: [
+    "General (Sem 7)",
+    "Advanced System Programming",
+    "Advanced Data Structures",
+    "Computer Vision",
+    "Business Intelligence & Analytics",
+    "Practical Files (Sem 7)",
+    "Web Intelligence",
+    "Principles of Management & Economics"
   ]
 };
 
@@ -766,40 +784,41 @@ const KaMaTi = () => {
       {/* Notes Modal - move above footer */}
       <Dialog open={showNotesModal} onOpenChange={setShowNotesModal}>
         <DialogContent className="notes-modal">
-          <DialogHeader>
-            <DialogTitle>Study Materials</DialogTitle>
+          <DialogHeader className="notes-modal-header">
+            <DialogTitle className="notes-modal-title">
+              <BookOpen className="title-icon" size={28} />
+              <span className="title-text">Explore Study Materials</span>
+            </DialogTitle>
+            <p className="notes-modal-subtitle">Find notes, assignments, and practical files for your semester.</p>
           </DialogHeader>
+          
           {/* Search and Filters */}
-          <div className="notes-controls">
+          <div className="notes-controls-panel">
             <div className="search-container">
-              <Search size={18} />
+              <Search className="search-icon" size={20} />
               <Input
-                placeholder="Search notes..."
+                placeholder="Search by title or subject..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="search-input"
               />
             </div>
+            
             <div className="notes-filters">
               <Select value={filters.semester} onValueChange={(value) => setFilters({ ...filters, semester: value })}>
-                <SelectTrigger>
+                <SelectTrigger className="filter-select">
                   <SelectValue placeholder="All Semesters" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Semesters</SelectItem>
-                  <SelectItem value="1">Semester 1</SelectItem>
-                  <SelectItem value="2">Semester 2</SelectItem>
-                  <SelectItem value="3">Semester 3</SelectItem>
-                  <SelectItem value="4">Semester 4</SelectItem>
-                  <SelectItem value="5">Semester 5</SelectItem>
-                  <SelectItem value="6">Semester 6</SelectItem>
-                  <SelectItem value="7">Semester 7</SelectItem>
-                  <SelectItem value="8">Semester 8</SelectItem>
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
+                    <SelectItem key={sem} value={String(sem)}>Semester {sem}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              
               <Select value={filters.subject} onValueChange={(value) => setFilters({ ...filters, subject: value })}>
-
-                <SelectTrigger>
+                <SelectTrigger className="filter-select">
                   <SelectValue placeholder="All Subjects" />
                 </SelectTrigger>
                 <SelectContent>
@@ -811,26 +830,36 @@ const KaMaTi = () => {
               </Select>
             </div>
           </div>
-          <div className="notes-grid">
-            {filteredNotes.map((note) => (
-              <Card key={note.id} className="note-card">
-                <CardContent>
-                  <h4>{note.title}</h4>
-                  <div className="note-details">
-                    <p><strong>Subject:</strong> {note.subject}</p>
-                    <p><strong>Semester:</strong> {note.semester}</p>
-                    <p><strong>Size:</strong> {note.size}</p>
-                    <p><strong>Uploaded:</strong> {note.uploaded_at}</p>
-                  </div>
-                  <div className="note-actions">
-                    <Button size="sm" className="view-button" onClick={() => openDriveViewer(note.file_url)}>
-                      <Eye size={16} />
-                      View Note
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          
+          <div className="notes-grid-container">
+            {filteredNotes.length === 0 ? (
+              <div className="no-notes-found">
+                <Search size={48} className="empty-icon" />
+                <p>No study materials found for this search.</p>
+              </div>
+            ) : (
+              <div className="notes-grid">
+                {filteredNotes.map((note) => (
+                  <Card key={note.id} className="note-card">
+                    <CardContent>
+                      <h4>{note.title}</h4>
+                      <div className="note-details">
+                        <p><strong>Subject:</strong> {note.subject}</p>
+                        <p><strong>Semester:</strong> {note.semester}</p>
+                        <p><strong>Size:</strong> {note.size}</p>
+                        {note.uploaded_at && <p><strong>Uploaded:</strong> {note.uploaded_at}</p>}
+                      </div>
+                      <div className="note-actions">
+                        <Button size="sm" className="view-button" onClick={() => openDriveViewer(note.file_url)}>
+                          <Eye size={18} />
+                          Open Document
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
