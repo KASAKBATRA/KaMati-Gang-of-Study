@@ -1,8 +1,17 @@
 import resourcesData from './resources.json';
 import { SEMESTERS } from './curriculum';
 
+export function getLocalApprovedResources() {
+  try {
+    const saved = localStorage.getItem('kamati_approved_resources');
+    if (saved) return JSON.parse(saved);
+  } catch (e) {}
+  return [];
+}
+
 export function getAllResources() {
-  return resourcesData;
+  const localApproved = getLocalApprovedResources();
+  return [...localApproved, ...resourcesData];
 }
 
 export function normalizeSubjectName(str) {
@@ -12,7 +21,8 @@ export function normalizeSubjectName(str) {
 
 export function getResourcesForSubject(subjectName, category = 'all') {
   const norm = normalizeSubjectName(subjectName);
-  return resourcesData.filter(res => {
+  const all = getAllResources();
+  return all.filter(res => {
     const resNorm = normalizeSubjectName(res.subject);
     const matchesSubject = resNorm === norm || 
       resNorm.includes(norm) || 
@@ -24,7 +34,8 @@ export function getResourcesForSubject(subjectName, category = 'all') {
 
 export function getResourcesForSemester(semNumber, category = 'all') {
   const semInt = parseInt(semNumber, 10);
-  return resourcesData.filter(res => {
+  const all = getAllResources();
+  return all.filter(res => {
     const matchesSem = res.semester === semInt;
     const matchesCategory = category === 'all' || res.category === category;
     return matchesSem && matchesCategory;

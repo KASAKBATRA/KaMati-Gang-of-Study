@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { SEMESTERS } from '../data/curriculum';
 import { getResourcesForSubject } from '../data/resourceManager';
+import { computePyqAnalysis, getApprovedPyqsForSubject } from '../lib/pyqAnalyzerEngine';
 
 export default function PyqAnalyzerPage({ navigate, onPreview, onCopy, copiedId }) {
   const [selectedSem, setSelectedSem] = useState(4);
@@ -33,16 +34,27 @@ export default function PyqAnalyzerPage({ navigate, onPreview, onCopy, copiedId 
   const loadPapersForSubject = (sem, subName) => {
     setLoadingPapers(true);
     setAnalysisData(null);
+
+    // Initial load from verified catalog
+    const localPapers = getApprovedPyqsForSubject(sem, subName);
+    setAvailablePapers(localPapers);
+
+    // Try fetching updated papers from server if available
     fetch(`/api/pyq/papers?semester=${sem}&subject=${encodeURIComponent(subName)}`)
-      .then(res => res.json())
-      .then(data => {
-        setAvailablePapers(data.papers || []);
+      .then(res => {
+        const contentType = res.headers.get('content-type') || '';
+        if (res.ok && contentType.includes('application/json')) {
+          return res.json();
+        }
+        return null;
       })
-      .catch(err => {
-        console.error('Error loading papers:', err);
-        // Fallback to local resources
-        const local = getResourcesForSubject(subName, 'pyq');
-        setAvailablePapers(local);
+      .then(data => {
+        if (data && Array.isArray(data.papers) && data.papers.length > 0) {
+          setAvailablePapers(data.papers);
+        }
+      })
+      .catch(() => {
+        // Keep verified catalog fallback
       })
       .finally(() => setLoadingPapers(false));
   };
@@ -52,29 +64,46 @@ export default function PyqAnalyzerPage({ navigate, onPreview, onCopy, copiedId 
     loadPapersForSubject(selectedSem, sub.name);
   };
 
-  // Run Deterministic Analysis
-  const handleAnalyze = () => {
+  // Run Deterministic Analysis with zero-crash fallback
+  const handleAnalyze = async () => {
     if (!selectedSubject) return;
     setAnalyzing(true);
 
-    fetch('/api/pyq/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        semester: selectedSem,
-        subject: selectedSubject.name,
-        subjectSlug: selectedSubject.slug
-      })
-    })
-      .then(res => res.json())
-      .then(data => {
-        setAnalysisData(data);
-        setActiveTab('topics');
-      })
-      .catch(err => {
-        alert('Failed to run analysis: ' + err.message);
-      })
-      .finally(() => setAnalyzing(false));
+    try {
+      const res = await fetch('/api/pyq/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          semester: selectedSem,
+          subject: selectedSubject.name,
+          subjectSlug: selectedSubject.slug
+        })
+      });
+
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
+        const data = await res.json();
+        if (data && data.sections) {
+          setAnalysisData(data);
+          setActiveTab('topics');
+          setAnalyzing(false);
+          return;
+        }
+      }
+    } catch (networkErr) {
+      console.warn('Backend unavailable, running analysis client-side:', networkErr);
+    }
+
+    // Seamless instant client-side execution if server is offline or on static Vercel
+    try {
+      const clientAnalysis = computePyqAnalysis(selectedSem, selectedSubject.name, selectedSubject.slug);
+      setAnalysisData(clientAnalysis);
+      setActiveTab('topics');
+    } catch (engineErr) {
+      console.error('Analysis engine error:', engineErr);
+    } finally {
+      setAnalyzing(false);
+    }
   };
 
   return (

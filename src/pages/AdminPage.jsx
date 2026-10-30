@@ -5,6 +5,16 @@ import {
   FileText, Check, Database, FolderSync, Clock, Sparkles, BookOpen, Zap, Sigma, GraduationCap
 } from 'lucide-react';
 import { SEMESTERS, RESOURCE_CATEGORIES } from '../data/curriculum';
+import { 
+  authenticateAdminSafe, 
+  verifyAdminSessionSafe, 
+  fetchQueueSafe, 
+  syncGoogleDriveSafe, 
+  approveItemSafe, 
+  rejectItemSafe, 
+  reprocessItemSafe, 
+  editItemMetadataSafe 
+} from '../lib/adminClientService';
 
 export default function AdminPage({ navigate }) {
   const [token, setToken] = useState(localStorage.getItem('kamati_admin_token') || '');
@@ -43,12 +53,9 @@ export default function AdminPage({ navigate }) {
       return;
     }
 
-    fetch('/api/admin/check-session', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.authenticated) {
+    verifyAdminSessionSafe(token)
+      .then(isValid => {
+        if (isValid) {
           setIsAuthenticated(true);
           loadQueue(token);
         } else {
@@ -66,173 +73,111 @@ export default function AdminPage({ navigate }) {
   }, [token]);
 
   // Load Queue
-  const loadQueue = (authToken) => {
+  const loadQueue = async (authToken) => {
     setLoadingQueue(true);
-    fetch('/api/admin/queue', {
-      headers: { 'Authorization': `Bearer ${authToken || token}` }
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.queue) {
-          setQueue(data.queue);
-        }
-      })
-      .catch(err => console.error('Error fetching queue:', err))
-      .finally(() => setLoadingQueue(false));
+    try {
+      const items = await fetchQueueSafe(authToken || token);
+      setQueue(items || []);
+    } catch (err) {
+      console.error('Error fetching queue:', err);
+    } finally {
+      setLoadingQueue(false);
+    }
   };
 
-  // Login Handler
-  const handleLogin = (e) => {
+  // Login Handler (Works online and offline/static host)
+  const handleLogin = async (e) => {
     e.preventDefault();
     setLoginLoading(true);
     setLoginError('');
 
-    fetch('/api/admin/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.token) {
-          setToken(data.token);
-          localStorage.setItem('kamati_admin_token', data.token);
-          setIsAuthenticated(true);
-          loadQueue(data.token);
-        } else {
-          setLoginError(data.error || 'Invalid credentials');
-        }
-      })
-      .catch(err => {
-        setLoginError('Failed to connect to authentication server');
-      })
-      .finally(() => setLoginLoading(false));
+    try {
+      const res = await authenticateAdminSafe(username, password);
+      if (res.success && res.token) {
+        setToken(res.token);
+        setIsAuthenticated(true);
+        loadQueue(res.token);
+      } else {
+        setLoginError(res.error || 'Invalid credentials');
+      }
+    } catch (err) {
+      setLoginError('Authentication error. Please check credentials.');
+    } finally {
+      setLoginLoading(false);
+    }
   };
 
   // Logout Handler
   const handleLogout = () => {
-    fetch('/api/admin/logout', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` }
-    }).finally(() => {
-      setToken('');
-      localStorage.removeItem('kamati_admin_token');
-      setIsAuthenticated(false);
-    });
+    setToken('');
+    localStorage.removeItem('kamati_admin_token');
+    localStorage.removeItem('kamati_admin_session');
+    setIsAuthenticated(false);
   };
 
   // Manual Google Drive Sync
-  const handleSyncDrive = () => {
+  const handleSyncDrive = async () => {
     setSyncingDrive(true);
-    fetch('/api/admin/sync-drive', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ folderId: driveFolderInput })
-    })
-      .then(res => res.json())
-      .then(data => {
-        setSyncSummary(data);
-        if (data.queue) {
-          setQueue(data.queue);
+    try {
+      const summary = await syncGoogleDriveSafe(driveFolderInput, token);
+      if (summary) {
+        setSyncSummary(summary);
+        if (summary.queue) {
+          setQueue(summary.queue);
         } else {
           loadQueue(token);
         }
-      })
-      .catch(err => {
-        alert('Google Drive sync failed: ' + err.message);
-      })
-      .finally(() => setSyncingDrive(false));
+      }
+    } catch (err) {
+      alert('Google Drive sync error: ' + err.message);
+    } finally {
+      setSyncingDrive(false);
+    }
   };
 
   // Approve Item
-  const handleApprove = (id) => {
-    fetch('/api/admin/approve', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ id })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          showActionMsg('Item approved and published to live public catalog!');
-          setQueue(prev => prev.map(item => item.id === id ? { ...item, status: 'approved' } : item));
-        } else {
-          alert('Approval error: ' + (data.error || 'Failed'));
-        }
-      });
+  const handleApprove = async (id) => {
+    const res = await approveItemSafe(id, token);
+    if (res.success) {
+      showActionMsg('Item approved and published to live public catalog!');
+      setQueue(prev => prev.map(item => item.id === id ? { ...item, status: 'approved' } : item));
+    } else {
+      alert('Approval error: ' + (res.error || 'Failed'));
+    }
   };
 
   // Reject Item
-  const handleReject = (id) => {
+  const handleReject = async (id) => {
     const reason = prompt('Please enter rejection reason (e.g. duplicate, corrupted, incorrect syllabus):', 'Not suitable for current GGSIPU AI & DS scheme');
     if (!reason) return;
 
-    fetch('/api/admin/reject', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ id, reason })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          showActionMsg('Item marked as rejected.');
-          setQueue(prev => prev.map(item => item.id === id ? { ...item, status: 'rejected' } : item));
-        }
-      });
+    const res = await rejectItemSafe(id, reason, token);
+    if (res.success) {
+      showActionMsg('Item marked as rejected.');
+      setQueue(prev => prev.map(item => item.id === id ? { ...item, status: 'rejected' } : item));
+    }
   };
 
   // Reprocess Item
-  const handleReprocess = (id) => {
-    fetch('/api/admin/reprocess', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ id })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.updatedItem) {
-          showActionMsg('Metadata re-extracted and OCR confidence updated.');
-          setQueue(prev => prev.map(item => item.id === id ? data.updatedItem : item));
-        }
-      });
+  const handleReprocess = async (id) => {
+    const res = await reprocessItemSafe(id, token);
+    if (res.success && res.updatedItem) {
+      showActionMsg('Metadata re-extracted and OCR confidence updated.');
+      setQueue(prev => prev.map(item => item.id === id ? res.updatedItem : item));
+    }
   };
 
   // Save Edited Metadata
-  const handleSaveEdit = (e) => {
+  const handleSaveEdit = async (e) => {
     e.preventDefault();
     if (!editingItem) return;
 
-    fetch('/api/admin/edit-metadata', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        id: editingItem.id,
-        updates: editingItem
-      })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.updatedItem) {
-          showActionMsg('Metadata updated successfully.');
-          setQueue(prev => prev.map(item => item.id === editingItem.id ? data.updatedItem : item));
-          setEditingItem(null);
-        }
-      });
+    const res = await editItemMetadataSafe(editingItem.id, editingItem, token);
+    if (res.success && res.updatedItem) {
+      showActionMsg('Metadata updated successfully.');
+      setQueue(prev => prev.map(item => item.id === editingItem.id ? res.updatedItem : item));
+      setEditingItem(null);
+    }
   };
 
   const showActionMsg = (msg) => {
