@@ -309,9 +309,6 @@ export default function AdminPage({ navigate }) {
                     outline: 'none'
                   }}
                 />
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-                  Default environment pass: <code style={{ color: 'var(--cyan-dark)' }}>admin@kamati2026</code>
-                </span>
               </div>
 
               <button

@@ -273,7 +273,7 @@ export async function authenticateAdminSafe(username, password) {
 
   return {
     success: false,
-    error: 'Invalid admin credentials. Use username: "admin" and password: "admin@kamati2026"'
+    error: 'Invalid admin username or password. Please try again.'
   };
 }
 

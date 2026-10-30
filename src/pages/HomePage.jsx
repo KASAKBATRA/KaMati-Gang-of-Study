@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  Search, BookOpen, FileText, Zap, Sigma, ArrowRight, ShieldCheck, 
+  Search, BookOpen, FileText, Zap, Sigma, ArrowRight, 
   Sparkles, Clock, CheckCircle2, MessageCircle, ExternalLink, GraduationCap, Flame
 } from 'lucide-react';
 import { SEMESTERS, RESOURCE_CATEGORIES } from '../data/curriculum';
@@ -91,12 +91,6 @@ export default function HomePage({ navigate, onPreview, onCopy, copiedId }) {
                 <CheckCircle2 size={18} color="#10B981" />
                 <span>Revision Tracker</span>
               </button>
-            </div>
-
-            {/* Small Indication */}
-            <div className="hero-notice">
-              <ShieldCheck size={16} color="#08B6D4" />
-              <span><strong>No Login. No Registration.</strong> Just Study. Free Google Drive direct access.</span>
             </div>
 
             {/* Stats Bar */}
