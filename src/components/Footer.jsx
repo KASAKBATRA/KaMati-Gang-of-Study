@@ -94,6 +94,16 @@ export default function Footer({ navigate }) {
                 </button>
               </li>
               <li>
+                <button type="button" onClick={() => navigate('/search?category=syllabus')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', textAlign: 'left', padding: 0 }}>
+                  Official Syllabus Schemes
+                </button>
+              </li>
+              <li>
+                <button type="button" onClick={() => navigate('/pyq-analyzer')} style={{ background: 'none', border: 'none', color: 'var(--cyan-primary)', cursor: 'pointer', textAlign: 'left', padding: 0, fontWeight: '700' }}>
+                  ⚡ OCR PYQ Analyzer
+                </button>
+              </li>
+              <li>
                 <button type="button" onClick={() => navigate('/checklist')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', textAlign: 'left', padding: 0 }}>
                   Exam Revision Checklist
                 </button>
@@ -131,8 +141,23 @@ export default function Footer({ navigate }) {
           <div>
             © 2025–2026 KaMati Gang of Study. Built for GGSIPU AI & Data Science students.
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#64748B' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', color: '#64748B' }}>
             <span>Knowledge is not just learned, it is received with humility.</span>
+            <button
+              type="button"
+              onClick={() => navigate('/admin')}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#64748B',
+                fontSize: '0.75rem',
+                cursor: 'pointer',
+                opacity: 0.6
+              }}
+              title="Admin Automation Dashboard"
+            >
+              🔒 Admin
+            </button>
           </div>
         </div>
       </div>

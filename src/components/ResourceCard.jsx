@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Eye, ExternalLink, Copy, Check, Calendar, BookOpen, Zap, Sigma } from 'lucide-react';
+import { FileText, Eye, ExternalLink, Copy, Check, Calendar, BookOpen, Zap, Sigma, GraduationCap } from 'lucide-react';
 
 export default function ResourceCard({ resource, onPreview, onCopy, copiedId }) {
   const getCategoryBadge = (cat) => {
@@ -8,6 +8,8 @@ export default function ResourceCard({ resource, onPreview, onCopy, copiedId }) 
         return { label: 'PYQ / Question Paper', color: '#3B82F6', icon: FileText };
       case 'revision':
         return { label: 'Quick Revision', color: '#10B981', icon: Zap };
+      case 'syllabus':
+        return { label: 'Syllabus / Scheme', color: '#8B5CF6', icon: GraduationCap };
       case 'formula':
         return { label: 'Formula Sheet', color: '#F59E0B', icon: Sigma };
       default:

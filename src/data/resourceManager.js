@@ -68,6 +68,7 @@ export function getSemesterStats(semNumber) {
     notesCount: semResources.filter(r => r.category === 'notes').length,
     pyqCount: semResources.filter(r => r.category === 'pyq').length,
     revisionCount: semResources.filter(r => r.category === 'revision').length,
+    syllabusCount: semResources.filter(r => r.category === 'syllabus').length,
     formulaCount: semResources.filter(r => r.category === 'formula').length,
     subjectsCount: semObj ? semObj.subjects.length : 0,
     subjects: semObj ? semObj.subjects : []
@@ -81,6 +82,7 @@ export function getSubjectStats(subjectName) {
     notes: items.filter(r => r.category === 'notes').length,
     pyqs: items.filter(r => r.category === 'pyq').length,
     revision: items.filter(r => r.category === 'revision').length,
+    syllabus: items.filter(r => r.category === 'syllabus').length,
     formulas: items.filter(r => r.category === 'formula').length
   };
 }

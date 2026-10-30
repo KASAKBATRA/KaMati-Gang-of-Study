@@ -130,6 +130,7 @@ export default function SearchPage({ initialQuery = '', initialCategory = 'all',
                 <option value="notes">Unit-Wise Notes</option>
                 <option value="pyq">Previous Year Papers (PYQ)</option>
                 <option value="revision">Quick Revision Sheets</option>
+                <option value="syllabus">Official Syllabus / Scheme</option>
                 <option value="formula">Formula Sheets</option>
               </select>
             </div>

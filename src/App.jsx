@@ -8,6 +8,8 @@ import SubjectDetailPage from './pages/SubjectDetailPage';
 import SearchPage from './pages/SearchPage';
 import ChecklistPage from './pages/ChecklistPage';
 import AboutPage from './pages/AboutPage';
+import AdminPage from './pages/AdminPage';
+import PyqAnalyzerPage from './pages/PyqAnalyzerPage';
 import PdfViewerModal from './components/PdfViewerModal';
 
 export default function App() {
@@ -146,6 +148,23 @@ export default function App() {
     // /checklist
     if (cleanRoute === '/checklist') {
       return <ChecklistPage navigate={navigate} />;
+    }
+
+    // /pyq-analyzer
+    if (cleanRoute === '/pyq-analyzer') {
+      return (
+        <PyqAnalyzerPage
+          navigate={navigate}
+          onPreview={handlePreview}
+          onCopy={handleCopyLink}
+          copiedId={copiedId}
+        />
+      );
+    }
+
+    // /admin
+    if (cleanRoute === '/admin') {
+      return <AdminPage navigate={navigate} />;
     }
 
     // /about

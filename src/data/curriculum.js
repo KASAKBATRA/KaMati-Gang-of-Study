@@ -404,6 +404,15 @@ export const RESOURCE_CATEGORIES = [
     description: "Concise summary handouts, high-yield topics, and chapter recaps for night-before-exam prep."
   },
   {
+    id: "syllabus",
+    name: "Syllabus",
+    shortName: "Syllabus",
+    icon: "GraduationCap",
+    badge: "Official Scheme",
+    color: "#8B5CF6",
+    description: "Official GGSIPU AI & Data Science scheme, examination scheme, credits, and syllabus modules."
+  },
+  {
     id: "formula",
     name: "Formula Sheets",
     shortName: "Formulas",

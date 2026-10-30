@@ -76,10 +76,20 @@ export default function HomePage({ navigate, onPreview, onCopy, copiedId }) {
               <button 
                 type="button" 
                 className="btn-secondary-hero"
+                onClick={() => navigate('/pyq-analyzer')}
+                style={{ borderColor: 'rgba(8, 182, 212, 0.4)' }}
+              >
+                <Sparkles size={18} color="#08B6D4" />
+                <span>⚡ OCR PYQ Analyzer</span>
+              </button>
+
+              <button 
+                type="button" 
+                className="btn-secondary-hero"
                 onClick={() => navigate('/checklist')}
               >
                 <CheckCircle2 size={18} color="#10B981" />
-                <span>Exam Revision Tracker</span>
+                <span>Revision Tracker</span>
               </button>
             </div>
 
@@ -153,6 +163,16 @@ export default function HomePage({ navigate, onPreview, onCopy, copiedId }) {
               <div className="quick-info">
                 <h4>Syllabus Checklists</h4>
                 <p>Track your unit prep progress</p>
+              </div>
+            </div>
+
+            <div className="quick-card" onClick={() => navigate('/pyq-analyzer')} style={{ borderLeft: '3px solid #08B6D4' }}>
+              <div className="quick-icon" style={{ background: 'rgba(8, 182, 212, 0.15)', color: '#08B6D4' }}>
+                <Sparkles size={22} />
+              </div>
+              <div className="quick-info">
+                <h4>⚡ OCR PYQ Analyzer</h4>
+                <p>Repeats, topics & unit weightages</p>
               </div>
             </div>
           </div>
