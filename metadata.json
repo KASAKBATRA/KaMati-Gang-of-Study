@@ -1,0 +1,8 @@
+{
+  "name": "KaMaTi Gang of Study",
+  "description": "Comprehensive IPU study hub for semester notes, drive links, exam countdowns, community discussions, and academic resources.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">KaMaTi Gang of Study</string>
+    <string name="tagline">IPU Notes Hub • Simplified Resources • Vibrant Community</string>
+    <string name="quote_en">Knowledge is not just learned, it is received with humility.</string>
+    <string name="quote_hi">ज्ञान केवल पढ़ने से नहीं मिलता, उसे विनम्रता से ग्रहण करना पड़ता है।</string>
+    <string name="by_kamati">By KaMaTi Gang 😁</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_notes">Notes</string>
+    <string name="nav_exams">Exams</string>
+    <string name="nav_discuss">Discuss</string>
+    <string name="nav_about">About</string>
+</resources>
