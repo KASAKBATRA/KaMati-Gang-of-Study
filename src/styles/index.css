@@ -1152,3 +1152,28 @@ footer {
     grid-template-columns: 1fr;
   }
 }
+
+/* Student Notes Rating & Helpfulness System Styles */
+.notes-rating-container {
+  transition: all 0.2s ease;
+}
+
+.rating-badge {
+  transition: transform 0.15s ease, background-color 0.2s ease;
+}
+
+.rating-badge:hover {
+  transform: translateY(-1px);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+

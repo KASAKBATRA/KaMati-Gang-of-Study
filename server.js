@@ -17,6 +17,12 @@ import {
   getApprovedPyqsForSubject, 
   analyzePyqPapers 
 } from './server/pyqAnalyzer.js';
+import {
+  getAllRatingsStats,
+  getResourceRating,
+  submitStarRating,
+  submitHelpfulFeedback
+} from './server/ratings.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -231,6 +237,51 @@ const server = http.createServer(async (req, res) => {
     } catch (e) {
       console.error('Analysis error:', e);
       return sendJson(res, 500, { error: 'Failed to run PYQ analysis', details: e.message });
+    }
+  }
+
+  // --- STUDENT NOTES RATINGS & HELPFULNESS PUBLIC ROUTES (NO LOGIN REQUIRED) ---
+  if (pathname === '/api/ratings' && req.method === 'GET') {
+    const stats = getAllRatingsStats();
+    return sendJson(res, 200, { ratings: stats });
+  }
+
+  if (pathname === '/api/ratings/resource' && req.method === 'GET') {
+    const resId = searchParams.get('id');
+    const token = searchParams.get('token') || '';
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+    const ua = req.headers['user-agent'] || '';
+    const result = getResourceRating(resId, token);
+    return sendJson(res, 200, result || { error: 'Resource not found' });
+  }
+
+  if (pathname === '/api/ratings/rate' && req.method === 'POST') {
+    try {
+      const body = await parseJsonBody(req);
+      const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+      const ua = req.headers['user-agent'] || '';
+      const result = submitStarRating(body.resourceId, body.rating, body.token, ip, ua);
+      if (result.success) {
+        return sendJson(res, 200, result);
+      }
+      return sendJson(res, 400, result);
+    } catch (e) {
+      return sendJson(res, 500, { error: 'Failed to submit rating', details: e.message });
+    }
+  }
+
+  if (pathname === '/api/ratings/helpful' && req.method === 'POST') {
+    try {
+      const body = await parseJsonBody(req);
+      const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+      const ua = req.headers['user-agent'] || '';
+      const result = submitHelpfulFeedback(body.resourceId, body.helpful, body.token, ip, ua);
+      if (result.success) {
+        return sendJson(res, 200, result);
+      }
+      return sendJson(res, 400, result);
+    } catch (e) {
+      return sendJson(res, 500, { error: 'Failed to submit helpful feedback', details: e.message });
     }
   }
 

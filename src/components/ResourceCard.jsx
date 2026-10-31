@@ -1,7 +1,8 @@
 import React from 'react';
 import { FileText, Eye, ExternalLink, Copy, Check, Calendar, BookOpen, Zap, Sigma, GraduationCap } from 'lucide-react';
+import NotesRatingWidget from './NotesRatingWidget';
 
-export default function ResourceCard({ resource, onPreview, onCopy, copiedId }) {
+export default function ResourceCard({ resource, onPreview, onCopy, copiedId, ratingStats }) {
   const getCategoryBadge = (cat) => {
     switch (cat) {
       case 'pyq':
@@ -61,6 +62,14 @@ export default function ResourceCard({ resource, onPreview, onCopy, copiedId }) 
             </span>
           )}
         </div>
+
+        {/* Student Rating & Helpfulness for Notes */}
+        {resource.category === 'notes' && (
+          <NotesRatingWidget
+            resourceId={resource.id}
+            initialStats={ratingStats}
+          />
+        )}
       </div>
 
       {/* Footer / Actions */}

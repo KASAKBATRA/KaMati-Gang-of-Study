@@ -1,12 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { Search, X, Filter, BookOpen, FileText, Zap, Sigma, ArrowRight } from 'lucide-react';
+import { Search, X, Filter, BookOpen, FileText, Zap, Sigma, ArrowRight, ArrowUpDown } from 'lucide-react';
 import { searchResources } from '../data/resourceManager';
+import { fetchAllRatings, subscribeToRatings, sortResourcesWithRatings } from '../lib/ratingService';
 import ResourceCard from '../components/ResourceCard';
 
 export default function SearchPage({ initialQuery = '', initialCategory = 'all', navigate, onPreview, onCopy, copiedId }) {
   const [query, setQuery] = useState(initialQuery);
   const [semester, setSemester] = useState('all');
   const [category, setCategory] = useState(initialCategory);
+  const [sortBy, setSortBy] = useState('recent');
+  const [ratingsMap, setRatingsMap] = useState({});
+
+  useEffect(() => {
+    let mounted = true;
+    fetchAllRatings().then(map => {
+      if (mounted && map) setRatingsMap(map);
+    });
+    const unsubscribe = subscribeToRatings((detail) => {
+      if (mounted && detail && detail.resourceId && detail.stats) {
+        setRatingsMap(prev => ({ ...prev, [detail.resourceId]: detail.stats }));
+      }
+    });
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     setQuery(initialQuery);
@@ -16,7 +35,8 @@ export default function SearchPage({ initialQuery = '', initialCategory = 'all',
     setCategory(initialCategory);
   }, [initialCategory]);
 
-  const results = searchResources(query, semester, category);
+  const rawResults = searchResources(query, semester, category);
+  const sortedResults = sortResourcesWithRatings(rawResults, sortBy, ratingsMap);
 
   return (
     <div style={{ padding: '40px 0 60px' }}>
@@ -159,15 +179,42 @@ export default function SearchPage({ initialQuery = '', initialCategory = 'all',
           </div>
         </div>
 
-        {/* Results Counter */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        {/* Results Counter & Sort */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
           <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-            Found <strong>{results.length}</strong> matching study resources
+            Found <strong>{sortedResults.length}</strong> matching study resources
           </span>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '0.82rem', fontWeight: '700', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <ArrowUpDown size={14} /> Sort notes:
+            </span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              style={{
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '6px 12px',
+                color: 'var(--text-primary)',
+                fontSize: '0.85rem',
+                fontWeight: '600',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+              aria-label="Sort search results"
+            >
+              <option value="recent">Recently Added (Default)</option>
+              <option value="highest_rated">⭐ Highest Rated</option>
+              <option value="most_helpful">👍 Most Helpful</option>
+              <option value="most_rated">📊 Most Rated</option>
+            </select>
+          </div>
         </div>
 
         {/* Results Grid */}
-        {results.length === 0 ? (
+        {sortedResults.length === 0 ? (
           <div className="coming-soon-card" style={{ maxWidth: '600px' }}>
             <div className="coming-soon-icon">🔍</div>
             <h3 className="coming-soon-title">No matching study materials found</h3>
@@ -189,13 +236,14 @@ export default function SearchPage({ initialQuery = '', initialCategory = 'all',
           </div>
         ) : (
           <div className="resources-grid">
-            {results.slice(0, 80).map(res => (
+            {sortedResults.slice(0, 80).map(res => (
               <ResourceCard
                 key={res.id}
                 resource={res}
                 onPreview={onPreview}
                 onCopy={onCopy}
                 copiedId={copiedId}
+                ratingStats={ratingsMap[res.id]}
               />
             ))}
           </div>

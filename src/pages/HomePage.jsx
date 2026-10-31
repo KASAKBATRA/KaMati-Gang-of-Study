@@ -1,15 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Search, BookOpen, FileText, Zap, Sigma, ArrowRight, 
   Sparkles, Clock, CheckCircle2, MessageCircle, ExternalLink, GraduationCap, Flame
 } from 'lucide-react';
 import { SEMESTERS, RESOURCE_CATEGORIES } from '../data/curriculum';
 import { getSemesterStats, getRecentlyAdded } from '../data/resourceManager';
+import { fetchAllRatings, subscribeToRatings } from '../lib/ratingService';
 import ResourceCard from '../components/ResourceCard';
 
 export default function HomePage({ navigate, onPreview, onCopy, copiedId }) {
   const [searchInput, setSearchInput] = useState('');
+  const [ratingsMap, setRatingsMap] = useState({});
   const recentResources = getRecentlyAdded(6);
+
+  useEffect(() => {
+    let mounted = true;
+    fetchAllRatings().then(map => {
+      if (mounted && map) setRatingsMap(map);
+    });
+    const unsubscribe = subscribeToRatings((detail) => {
+      if (mounted && detail && detail.resourceId && detail.stats) {
+        setRatingsMap(prev => ({ ...prev, [detail.resourceId]: detail.stats }));
+      }
+    });
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, []);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -290,6 +308,7 @@ export default function HomePage({ navigate, onPreview, onCopy, copiedId }) {
                 onPreview={onPreview}
                 onCopy={onCopy}
                 copiedId={copiedId}
+                ratingStats={ratingsMap[res.id]}
               />
             ))}
           </div>

@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, BookOpen, FileText, Zap, Sigma, Filter, 
-  ExternalLink, CheckSquare, MessageCircle, ArrowRight, ShieldCheck 
+  ExternalLink, CheckSquare, MessageCircle, ArrowRight, ShieldCheck,
+  ArrowUpDown, Star, ThumbsUp, Clock
 } from 'lucide-react';
 import { SEMESTERS, RESOURCE_CATEGORIES } from '../data/curriculum';
 import { getResourcesForSubject } from '../data/resourceManager';
+import { fetchAllRatings, subscribeToRatings, sortResourcesWithRatings } from '../lib/ratingService';
 import ResourceCard from '../components/ResourceCard';
 
 export default function SubjectDetailPage({ semNumber, subjectSlug, navigate, onPreview, onCopy, copiedId }) {
   const [activeCategory, setActiveCategory] = useState('notes');
   const [selectedUnit, setSelectedUnit] = useState('all');
+  const [sortBy, setSortBy] = useState('recent');
+  const [ratingsMap, setRatingsMap] = useState({});
   const [checklist, setChecklist] = useState({});
 
   const semInt = parseInt(semNumber, 10);
@@ -34,6 +38,23 @@ export default function SubjectDetailPage({ semNumber, subjectSlug, navigate, on
     } catch (e) {}
   };
 
+  // Load real rating & helpfulness stats
+  useEffect(() => {
+    let mounted = true;
+    fetchAllRatings().then(map => {
+      if (mounted && map) setRatingsMap(map);
+    });
+    const unsubscribe = subscribeToRatings((detail) => {
+      if (mounted && detail && detail.resourceId && detail.stats) {
+        setRatingsMap(prev => ({ ...prev, [detail.resourceId]: detail.stats }));
+      }
+    });
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, []);
+
   // Fetch all resources for this subject
   const allSubjectResources = getResourcesForSubject(subject.name);
   const categoryResources = allSubjectResources.filter(r => r.category === activeCategory);
@@ -43,6 +64,9 @@ export default function SubjectDetailPage({ semNumber, subjectSlug, navigate, on
     if (selectedUnit === 'all') return true;
     return r.unit === selectedUnit;
   });
+
+  // Sort resources honoring genuine rating and helpfulness data
+  const sortedResources = sortResourcesWithRatings(filteredResources, sortBy, ratingsMap);
 
   // Unique units present in this category
   const unitsPresent = Array.from(new Set(categoryResources.map(r => r.unit))).filter(Boolean);
@@ -167,34 +191,76 @@ export default function SubjectDetailPage({ semNumber, subjectSlug, navigate, on
           })}
         </div>
 
-        {/* Unit Filters (if units present) */}
-        {unitsPresent.length > 0 && (
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '24px', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.82rem', fontWeight: '700', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Filter size={14} /> Filter Unit:
-            </span>
-            <button
-              type="button"
-              className={`chip ${selectedUnit === 'all' ? 'active' : ''}`}
-              onClick={() => setSelectedUnit('all')}
-            >
-              All Units ({categoryResources.length})
-            </button>
-            {unitsPresent.map(u => (
-              <button
-                key={u}
-                type="button"
-                className={`chip ${selectedUnit === u ? 'active' : ''}`}
-                onClick={() => setSelectedUnit(u)}
-              >
-                {u} ({categoryResources.filter(r => r.unit === u).length})
-              </button>
-            ))}
+        {/* Filter and Sorting Toolbar */}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          flexWrap: 'wrap', 
+          gap: '12px', 
+          marginBottom: '24px',
+          paddingBottom: '16px',
+          borderBottom: '1px solid var(--border-light)'
+        }}>
+          {/* Unit Filters */}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+            {unitsPresent.length > 0 && (
+              <>
+                <span style={{ fontSize: '0.82rem', fontWeight: '700', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Filter size={14} /> Filter Unit:
+                </span>
+                <button
+                  type="button"
+                  className={`chip ${selectedUnit === 'all' ? 'active' : ''}`}
+                  onClick={() => setSelectedUnit('all')}
+                >
+                  All Units ({categoryResources.length})
+                </button>
+                {unitsPresent.map(u => (
+                  <button
+                    key={u}
+                    type="button"
+                    className={`chip ${selectedUnit === u ? 'active' : ''}`}
+                    onClick={() => setSelectedUnit(u)}
+                  >
+                    {u} ({categoryResources.filter(r => r.unit === u).length})
+                  </button>
+                ))}
+              </>
+            )}
           </div>
-        )}
+
+          {/* Sorting Options */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+            <span style={{ fontSize: '0.82rem', fontWeight: '700', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <ArrowUpDown size={14} /> Sort notes:
+            </span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              style={{
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '6px 12px',
+                color: 'var(--text-primary)',
+                fontSize: '0.85rem',
+                fontWeight: '600',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+              aria-label="Sort notes"
+            >
+              <option value="recent">Recently Added (Default)</option>
+              <option value="highest_rated">⭐ Highest Rated</option>
+              <option value="most_helpful">👍 Most Helpful</option>
+              <option value="most_rated">📊 Most Rated</option>
+            </select>
+          </div>
+        </div>
 
         {/* Resources Cards Grid or Coming Soon State */}
-        {filteredResources.length === 0 ? (
+        {sortedResources.length === 0 ? (
           <div className="coming-soon-card">
             <div className="coming-soon-icon">📚</div>
             <h3 className="coming-soon-title">
@@ -218,13 +284,14 @@ export default function SubjectDetailPage({ semNumber, subjectSlug, navigate, on
           </div>
         ) : (
           <div className="resources-grid">
-            {filteredResources.map(res => (
+            {sortedResources.map(res => (
               <ResourceCard
                 key={res.id}
                 resource={res}
                 onPreview={onPreview}
                 onCopy={onCopy}
                 copiedId={copiedId}
+                ratingStats={ratingsMap[res.id]}
               />
             ))}
           </div>
